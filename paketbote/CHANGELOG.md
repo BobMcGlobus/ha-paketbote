@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.1
+
+- **401 im Panel behoben.** `-DisableBasicAuth` gilt laut KasmVNC-Doku nur für
+  Websocket-Verbindungen — die HTTP-Auslieferung des Web-Clients verlangt
+  immer Basic-Auth. Deshalb half kein Zugangsdaten-Basteln: die Seite selbst
+  ging nie ohne Auth durch. nginx liefert den Client jetzt direkt vom
+  Dateisystem aus, nur der Websocket geht noch an KasmVNC. So machen es die
+  Referenz-Container auch
+
 ## 0.5.0
 
 - **Es wurden zu wenige Bestellungen gefunden.** `?orderFilter=open` ist

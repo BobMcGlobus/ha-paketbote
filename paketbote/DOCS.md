@@ -204,6 +204,10 @@ Device-Trust-Cookies und gehört **nicht** in einen Klartext-Backup-Sync.
 KasmVNC oder Chrome sind noch nicht oben. Ein paar Sekunden warten, dann neu
 laden. Bleibt es dabei: Add-on-Log prüfen.
 
+**Panel verbindet sich nicht**
+nginx liefert den Web-Client selbst vom Dateisystem aus; nur `/websockify` geht
+an KasmVNC. Bleibt die Verbindung aus, im Log nach `kasmvnc` suchen.
+
 **Keine Entities in HA**
 Log auf `No MQTT broker` prüfen. Mosquitto-Add-on installieren, MQTT-Integration
 hinzufügen, Paketbote neu starten.
