@@ -34,6 +34,10 @@ flags=(
     "--no-sandbox"
     # Docker gives /dev/shm 64 MB, which is not enough for a real browser.
     "--disable-dev-shm-usage"
+    # Without a GPU, Chrome blocklists WebGL entirely and says so on every
+    # page load. Software rendering keeps WebGL working, which is both quieter
+    # and less unusual to a site that fingerprints the canvas.
+    "--enable-unsafe-swiftshader"
 )
 
 bashio::log.info "Starting Chrome with profile ${CHROME_PROFILE}..."

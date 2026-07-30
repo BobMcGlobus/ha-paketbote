@@ -7,7 +7,7 @@ from pathlib import Path
 
 from app.config import Config
 from app.models import shorten
-from app.scraper import identify, normalise_text, sanitise_id
+from app.scraper import identify, looks_active, normalise_text, sanitise_id
 
 ORDER = "028-1234567-1234567"
 
@@ -58,6 +58,31 @@ class TestSanitiseId(unittest.TestCase):
 
     def test_strips_leading_and_trailing_separators(self):
         self.assertEqual(sanitise_id("//abc//"), "abc")
+
+
+class TestLooksActive(unittest.TestCase):
+    def test_delivered_card_is_skipped(self):
+        self.assertFalse(looks_active("Zugestellt am 28. Juli\nPaket ansehen"))
+
+    def test_arriving_card_is_active(self):
+        self.assertTrue(looks_active("Ankunft Freitag, 1. August"))
+
+    def test_today_card_is_active(self):
+        self.assertTrue(looks_active("Kommt heute\nZwischen 14 und 18 Uhr"))
+
+    def test_active_wins_over_delivered_in_mixed_card(self):
+        # A multi-item order can show one item delivered and another in flight;
+        # missing that delivery is worse than one extra request.
+        self.assertTrue(looks_active("Zugestellt am 28. Juli\nAnkunft morgen"))
+
+    def test_unrecognised_wording_fails_open(self):
+        self.assertTrue(looks_active("Irgendein neuer Amazon-Text"))
+
+    def test_empty_card_fails_open(self):
+        self.assertTrue(looks_active(""))
+
+    def test_case_is_ignored(self):
+        self.assertFalse(looks_active("ZUGESTELLT"))
 
 
 class TestNormaliseText(unittest.TestCase):

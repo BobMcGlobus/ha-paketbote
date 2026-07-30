@@ -16,6 +16,16 @@ level="$(bashio::config 'log_level')"
 printf '%s' "${log_levels[${level,,}]:-5}" > /run/s6/container_environment/LOG_LEVEL
 bashio::log.level "${level}"
 
+# The base image ships an empty /etc/machine-id, which Chrome complains about
+# on every start. Keeping the generated id on the config volume also keeps the
+# machine's identity stable across image rebuilds, not just restarts.
+if [[ ! -s /etc/machine-id ]]; then
+    if [[ ! -s /config/machine-id ]]; then
+        dbus-uuidgen > /config/machine-id
+    fi
+    cat /config/machine-id > /etc/machine-id
+fi
+
 mkdir -p "${profile}"
 
 # A hard container stop leaves these behind, after which Chrome refuses to

@@ -55,10 +55,21 @@ Im Panel sitzt ein voll funktionsfähiger, eingeloggter Browser.
 
 ## Sendungen auslesen
 
-Der Scraper hängt sich per CDP an den laufenden Chrome, sucht auf der
-Bestellübersicht alle Links auf Tracking-Seiten, öffnet die Seiten der Reihe
-nach in sichtbaren Tabs (2–5 s Pause dazwischen) und gibt den Rohtext aus. Beim
-Debuggen kannst du im Panel zusehen.
+Der Abruf läuft zweistufig, und das ist Absicht:
+
+1. **Bestellübersicht** — ein Seitenaufruf. Liefert alle Sendungen, ihre
+   Tracking-Links und den Text der jeweiligen Bestellkarte. Da steht schon
+   Zustelldatum und Status drin.
+2. **Progress-Tracker** — ein Aufruf *je Sendung*, teuer. Wird nur für
+   Sendungen geöffnet, die die Übersicht nicht als zugestellt meldet.
+
+Ohne diese Vorauswahl würde jeder Zyklus so viele Tracker-Seiten öffnen, wie du
+offene Bestellungen hast — bei einem Dutzend Bestellungen ist das Tagesbudget
+nach wenigen Zyklen weg. Erkennt die Vorauswahl den Kartentext nicht, gilt die
+Sendung als aktiv: ein Request zu viel ist besser als eine verpasste Zustellung.
+
+Die Tracker-Seiten öffnen sich der Reihe nach in sichtbaren Tabs, 2–5 s Pause
+dazwischen. Beim Debuggen kannst du im Panel zusehen.
 
 **Ohne SSH:** Option `dump_on_start` auf `true`, Add-on neu starten. Nach dem
 Start liegen die Captures unter `/config/dumps/<Zeitstempel>/` — eine `.txt` je
@@ -73,10 +84,15 @@ docker exec addon_local_paketbote paketbote --dump
 
 | Aufruf | Wirkung |
 |---|---|
-| `paketbote --dump` | Rohtext aller aktiven Sendungen nach stdout |
-| `paketbote --orders-only` | Nur die Sendungsliste, öffnet keine Tracker-Seiten |
-| `paketbote --dump --out DIR` | Je Sendung eine `.txt` in `DIR`, stdout bleibt eine Übersicht |
+| `paketbote --dump` | Übersicht + Rohtext aller aktiven Sendungen nach stdout |
+| `paketbote --orders-only` | Nur die Sendungsliste mit aktiv/zugestellt, öffnet keine Tracker-Seiten |
+| `paketbote --dump --all` | Öffnet auch die als zugestellt gemeldeten Sendungen |
+| `paketbote --dump --out DIR` | Dateien in `DIR`, stdout bleibt eine Übersicht |
 | `paketbote --log-level trace` | Zeigt jede Navigation |
+
+Mit `--out` entstehen `_overview.txt` (Rohtext der Bestellübersicht),
+`_cards.txt` (Kartentext je Sendung samt Aktiv-Einstufung) und je aktiver
+Sendung eine `<shipment_id>.txt`.
 
 Exit-Codes: `0` ok, `2` Amazon verlangt Login/MFA/Captcha, `3` Chrome nicht
 erreichbar.

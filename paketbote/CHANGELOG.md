@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.1
+
+Die Bestellübersicht trifft jetzt die Vorauswahl, statt jede Sendung zu öffnen.
+
+- **Zweistufig wie im Plan:** die Übersicht liefert Kartentext je Sendung,
+  zugestellte Sendungen werden übersprungen. Vorher wurden alle 9 gefundenen
+  Sendungen einzeln geöffnet — das sprengt das Request-Budget
+- Übersichtstext wird selbst als `_overview.txt` und `_cards.txt` gedumpt
+- `--all` öffnet auf Wunsch trotzdem alles
+- **Titel-Bug behoben:** die Kartensuche brach nach 8 DOM-Ebenen ab, Amazon
+  verschachtelt tiefer. Alle Sendungen hießen `untitled`
+- Kartengrenze läuft jetzt bis über den Status-Header hinaus, sonst fehlte
+  genau das „Zugestellt am …", nach dem gefiltert wird
+- `/etc/machine-id` wird befüllt und auf dem Config-Volume stabil gehalten
+- WebGL per Software-Rendering statt blocklisted — leiser und unauffälliger
+- Kein irreführendes „restarting" mehr beim Herunterfahren
+
 ## 0.2.0
 
 Phase 2 — Scraper-Kern. Liest, interpretiert aber nichts.

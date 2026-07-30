@@ -40,6 +40,10 @@ class Shipment:
     order_id: str
     tracking_url: str
     title: str = ""
+    # Visible text of this shipment's card on the order overview. This is the
+    # cheap tier: it already carries the delivery date and status, so it — not
+    # the expensive tracker page — decides whether a shipment is worth opening.
+    overview_text: str = ""
     carrier: str | None = None
     status: str = STATUS_UNKNOWN
     stops_remaining: int | None = None
@@ -48,6 +52,14 @@ class Shipment:
     expected_date: date | None = None
     state: str = STATE_IDLE
     last_seen: datetime | None = None
+
+
+@dataclass
+class OrderOverview:
+    """One read of the order overview: the cheap tier of the two-step poll."""
+
+    text: str
+    shipments: list["Shipment"]
 
 
 @dataclass

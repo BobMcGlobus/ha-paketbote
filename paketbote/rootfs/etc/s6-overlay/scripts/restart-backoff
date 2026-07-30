@@ -5,7 +5,17 @@
 #
 # Usage: restart-backoff <service-name> <exit-code> <signal>
 # ==============================================================================
-bashio::log.warning \
-    "Service ${1} exited with code ${2} (signal ${3}); restarting"
+declare -r service="${1}"
+declare -r exit_code="${2}"
+declare -r exit_signal="${3}"
 
-sleep 2
+# Exit code 256 means "killed by a signal"; SIGTERM is s6 shutting the add-on
+# down, not a failure. Announcing a restart there is both wrong and slow.
+if [[ "${exit_code}" -eq 256 ]] && [[ "${exit_signal}" -eq 15 ]]; then
+    bashio::log.debug "Service ${service} stopped on shutdown"
+    exit 0
+fi
+
+bashio::log.warning "Service ${service} exited with code ${exit_code} (signal ${exit_signal})"
+
+sleep 1

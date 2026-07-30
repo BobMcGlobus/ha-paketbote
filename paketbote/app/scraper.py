@@ -26,7 +26,7 @@ from .browser import (
     LoginRequired,
 )
 from .config import LOG_LEVELS, Config
-from .models import Shipment, TrackingPage, shorten
+from .models import OrderOverview, Shipment, TrackingPage, shorten
 
 LOGGER = logging.getLogger(__name__)
 
@@ -39,35 +39,84 @@ TRACKING_HREF_MARKERS = ("progress-tracker", "ship-track", "shipment-tracking")
 MAIN_CONTAINER_CANDIDATES = ("#pt-page-container", "main", "#a-page", "body")
 
 RAW_TEXT_LIMIT = 20_000
+CARD_TEXT_LIMIT = 2_000
 ORDER_ID_RE = re.compile(r"\b[A-Z0-9]{3}-\d{7}-\d{7}\b")
+
+# Amazon nests order cards deeply; a shallow walk finds no product link and
+# every shipment ends up untitled.
+CARD_WALK_MAX_DEPTH = 20
+
+# How far to keep climbing past the first product link, to pick up the status
+# header that sits above it.
+CARD_WALK_EXTRA_LEVELS = 3
 
 # Two tracker pages back to back look like a script; the plan asks for a pause.
 MIN_PAUSE_SECONDS = 2.0
 MAX_PAUSE_SECONDS = 5.0
 
+# Which shipments are worth an expensive tracker request. Checked against the
+# order card's own text, so the cheap tier does the filtering. Active wins over
+# delivered: a multi-item order can show both at once.
+ACTIVE_CARD_MARKERS = (
+    "kommt heute",
+    "kommt morgen",
+    "ankunft",
+    "zustellung heute",
+    "wird heute zugestellt",
+    "wird zugestellt",
+    "in zustellung",
+    "unterwegs",
+    "versandt",
+    "verspätet",
+    "arriving",
+    "out for delivery",
+)
+DELIVERED_CARD_MARKERS = (
+    "zugestellt",
+    "geliefert",
+    "zustellung abgeschlossen",
+    "delivered",
+)
+
 _COLLECT_TRACKING_LINKS_JS = """
-(markers) => {
+({ markers, maxDepth, extraLevels, cardTextLimit }) => {
+  const PRODUCT = 'a[href*="/dp/"], a[href*="/gp/product/"]';
+  const isTracking = (a) => markers.some((m) => a.href.includes(m));
+  const countTracking = (el) =>
+    Array.from(el.querySelectorAll('a[href]')).filter(isTracking).length;
+
   const seen = new Set();
   const out = [];
+
   for (const anchor of document.querySelectorAll('a[href]')) {
+    if (!isTracking(anchor)) continue;
     const href = anchor.href;
-    if (!markers.some((m) => href.includes(m))) continue;
     if (seen.has(href)) continue;
     seen.add(href);
 
-    // Walk up until we find the card that also holds a product link: that is
-    // the order block, whatever Amazon happens to call it this month.
+    // Find the order card by climbing. The nearest ancestor holding a product
+    // link is too narrow -- the delivery status ("Zugestellt am ...") usually
+    // sits in a header above it -- so keep climbing a few levels further. The
+    // boundary is an ancestor that swallows a second tracking link: that is
+    // the order list, not one card.
     let node = anchor;
+    let card = null;
     let title = '';
-    for (let depth = 0; depth < 8 && node; depth += 1) {
-      const product = node.querySelector('a[href*="/dp/"], a[href*="/gp/product/"]');
-      if (product) {
-        title = (product.textContent || '').trim();
-        break;
+    let widened = 0;
+
+    for (let depth = 0; depth < maxDepth && node; depth += 1) {
+      if (countTracking(node) > 1) break;
+      if (node.querySelector(PRODUCT)) {
+        if (!card) title = (node.querySelector(PRODUCT).textContent || '').trim();
+        card = node;
+        widened += 1;
+        if (widened > extraLevels) break;
       }
       node = node.parentElement;
     }
-    out.push({ href, title });
+
+    const cardText = card ? (card.innerText || '').slice(0, cardTextLimit) : '';
+    out.push({ href, title, cardText });
   }
   return out;
 }
@@ -113,6 +162,18 @@ def identify(url: str) -> tuple[str, str] | None:
     return sanitise_id(order_id), sanitise_id(shipment_key)
 
 
+def looks_active(card_text: str) -> bool:
+    """Is this shipment worth an expensive tracker request?
+
+    Fails open: a card whose wording we do not recognise counts as active, so a
+    vocabulary change costs requests rather than missed deliveries.
+    """
+    lowered = (card_text or "").lower()
+    if any(marker in lowered for marker in ACTIVE_CARD_MARKERS):
+        return True
+    return not any(marker in lowered for marker in DELIVERED_CARD_MARKERS)
+
+
 def normalise_text(text: str) -> str:
     """Trim trailing spaces and squeeze runs of blank lines."""
     lines = [line.rstrip() for line in text.splitlines()]
@@ -143,10 +204,19 @@ class Scraper:
         self._config = config
         self._browser = browser
 
-    def list_shipments(self) -> list[Shipment]:
-        """Everything the order overview currently offers a tracking link for."""
+    def read_overview(self) -> OrderOverview:
+        """The cheap tier: one page load, giving both raw text and shipments."""
         with self._browser.visit(self._config.order_history_url) as page:
-            found = page.evaluate(_COLLECT_TRACKING_LINKS_JS, list(TRACKING_HREF_MARKERS))
+            found = page.evaluate(
+                _COLLECT_TRACKING_LINKS_JS,
+                {
+                    "markers": list(TRACKING_HREF_MARKERS),
+                    "maxDepth": CARD_WALK_MAX_DEPTH,
+                    "extraLevels": CARD_WALK_EXTRA_LEVELS,
+                    "cardTextLimit": CARD_TEXT_LIMIT,
+                },
+            )
+            text = extract_text(page)
 
         LOGGER.debug("Order overview yielded %d tracking link(s)", len(found))
 
@@ -164,11 +234,31 @@ class Scraper:
                 order_id=order_id,
                 tracking_url=entry["href"],
                 title=shorten(entry.get("title", "")),
+                overview_text=normalise_text(entry.get("cardText", "")),
                 last_seen=datetime.now(),
             )
 
         LOGGER.info("Found %d shipment(s) on the order overview", len(shipments))
-        return list(shipments.values())
+        return OrderOverview(text=text, shipments=list(shipments.values()))
+
+    @staticmethod
+    def select_active(shipments: list[Shipment]) -> list[Shipment]:
+        """Drop shipments the overview already reports as delivered.
+
+        This is what keeps one poll from turning into a dozen tracker requests.
+        """
+        active: list[Shipment] = []
+        for shipment in shipments:
+            if looks_active(shipment.overview_text):
+                active.append(shipment)
+            else:
+                LOGGER.info(
+                    "Skipping %s (%s): overview says delivered",
+                    shipment.shipment_id,
+                    shipment.title or "untitled",
+                )
+        LOGGER.info("%d of %d shipment(s) still active", len(active), len(shipments))
+        return active
 
     def capture(self, shipment: Shipment) -> TrackingPage:
         """Open one tracker page and take its text."""
@@ -181,9 +271,9 @@ class Scraper:
             )
 
     def capture_all(self, shipments: list[Shipment] | None = None) -> list[TrackingPage]:
-        """Capture every shipment, pausing between pages."""
+        """Capture the given shipments, pausing between pages."""
         if shipments is None:
-            shipments = self.list_shipments()
+            shipments = self.select_active(self.read_overview().shipments)
 
         captures: list[TrackingPage] = []
         for index, shipment in enumerate(shipments):
@@ -208,6 +298,41 @@ def _configure_logging(level: int) -> None:
         format="%(levelname)s %(name)s: %(message)s",
         stream=sys.stderr,
     )
+
+
+def _emit_overview(overview: OrderOverview, out_dir: Path | None) -> None:
+    """The overview is a fixture in its own right: most of what phase 3 needs
+    to know is already on this page."""
+    rule = "=" * 72
+    print(rule)
+    print("ORDER OVERVIEW")
+    print(f"shipments   : {len(overview.shipments)}")
+    print(f"characters  : {len(overview.text)}")
+    print(rule)
+
+    for shipment in overview.shipments:
+        flag = "active" if looks_active(shipment.overview_text) else "done  "
+        print(f"  [{flag}] {shipment.shipment_id}  {shipment.title or '(no title found)'}")
+    print()
+
+    if out_dir is not None:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        target = out_dir / "_overview.txt"
+        target.write_text(overview.text, encoding="utf-8")
+        print(f"-> {target}")
+        cards = out_dir / "_cards.txt"
+        cards.write_text(
+            "\n\n".join(
+                f"### {s.shipment_id} | {s.title or '(no title)'} | active={looks_active(s.overview_text)}"
+                f"\n{s.overview_text}"
+                for s in overview.shipments
+            ),
+            encoding="utf-8",
+        )
+        print(f"-> {cards}")
+    else:
+        print(overview.text or "(no text extracted)")
+    print()
 
 
 def _emit(capture: TrackingPage, out_dir: Path | None) -> None:
@@ -250,6 +375,12 @@ def main(argv: list[str] | None = None) -> int:
         help="only list what the order overview reveals, open no tracker pages",
     )
     parser.add_argument(
+        "--all",
+        action="store_true",
+        dest="capture_all",
+        help="also open shipments the overview reports as delivered",
+    )
+    parser.add_argument(
         "--out",
         type=Path,
         metavar="DIR",
@@ -268,18 +399,27 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with AttachedBrowser(args.cdp_url) as browser:
             scraper = Scraper(config, browser)
-            shipments = scraper.list_shipments()
+            overview = scraper.read_overview()
+            _emit_overview(overview, args.out)
 
-            if not shipments:
+            if not overview.shipments:
                 print("No shipments with a tracking link on the order overview.")
                 return 0
 
             if args.orders_only:
-                for shipment in shipments:
-                    print(f"{shipment.shipment_id}\t{shipment.title or '-'}\t{shipment.tracking_url}")
+                for shipment in overview.shipments:
+                    flag = "active " if looks_active(shipment.overview_text) else "done   "
+                    print(f"{flag}\t{shipment.shipment_id}\t{shipment.title or '-'}")
                 return 0
 
-            captures = scraper.capture_all(shipments)
+            selected = (
+                overview.shipments if args.capture_all else scraper.select_active(overview.shipments)
+            )
+            if not selected:
+                print("Every shipment is already delivered; no tracker pages opened.")
+                return 0
+
+            captures = scraper.capture_all(selected)
 
     except LoginRequired as err:
         LOGGER.error("Amazon wants a human: %s", err)
