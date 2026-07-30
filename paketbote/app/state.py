@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS shipments (
     recipient       TEXT,
     delivery_address TEXT,
     carrier         TEXT,
+    tracking_code   TEXT,
     status          TEXT,
     stops_remaining INTEGER,
     window_start    TEXT,
@@ -43,6 +44,13 @@ CREATE TABLE IF NOT EXISTS field_health (
     fail_count INTEGER NOT NULL DEFAULT 0,
     last_ok    TEXT,
     last_fail  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS carrier_budget (
+    day      TEXT NOT NULL,
+    carrier  TEXT NOT NULL,
+    requests INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, carrier)
 );
 
 CREATE TABLE IF NOT EXISTS request_budget (
@@ -87,7 +95,7 @@ class Store:
         database written by an older build needs the new columns added.
         """
         existing = {row["name"] for row in self._db.execute("PRAGMA table_info(shipments)")}
-        for column in ("recipient", "delivery_address"):
+        for column in ("recipient", "delivery_address", "tracking_code"):
             if column not in existing:
                 self._db.execute(f"ALTER TABLE shipments ADD COLUMN {column} TEXT")
                 LOGGER.info("Added column %s to the shipments table", column)
@@ -101,10 +109,10 @@ class Store:
         self._db.execute(
             """
             INSERT INTO shipments (shipment_id, order_id, tracking_url, title, recipient,
-                                   delivery_address, carrier,
+                                   delivery_address, carrier, tracking_code,
                                    status, stops_remaining, window_start, window_end,
                                    expected_date, state, first_seen, last_seen)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(
                 (SELECT first_seen FROM shipments WHERE shipment_id = ?), ?), ?)
             ON CONFLICT(shipment_id) DO UPDATE SET
                 order_id=excluded.order_id,
@@ -113,6 +121,7 @@ class Store:
                 recipient=excluded.recipient,
                 delivery_address=excluded.delivery_address,
                 carrier=excluded.carrier,
+                tracking_code=excluded.tracking_code,
                 status=excluded.status,
                 stops_remaining=excluded.stops_remaining,
                 window_start=excluded.window_start,
@@ -129,6 +138,7 @@ class Store:
                 shipment.recipient,
                 shipment.delivery_address,
                 shipment.carrier,
+                shipment.tracking_code,
                 shipment.status,
                 shipment.stops_remaining,
                 _iso(shipment.window_start),
@@ -158,6 +168,7 @@ class Store:
             recipient=row["recipient"] or "",
             delivery_address=row["delivery_address"] or "",
             carrier=row["carrier"],
+            tracking_code=row["tracking_code"] or "",
             status=row["status"] or STATUS_UNKNOWN,
             stops_remaining=row["stops_remaining"],
             window_start=_as_time(row["window_start"]),
@@ -224,6 +235,26 @@ class Store:
             (day, amount, amount),
         )
         return self.requests_today(today)
+
+    def count_carrier_request(self, carrier: str, today: date | None = None) -> int:
+        """Carriers have their own quotas, separate from the Amazon budget."""
+        day = _iso(today or date.today())
+        self._db.execute(
+            """
+            INSERT INTO carrier_budget (day, carrier, requests) VALUES (?, ?, 1)
+            ON CONFLICT(day, carrier) DO UPDATE SET requests = requests + 1
+            """,
+            (day, carrier),
+        )
+        return self.carrier_requests_today(carrier, today)
+
+    def carrier_requests_today(self, carrier: str, today: date | None = None) -> int:
+        day = _iso(today or date.today())
+        row = self._db.execute(
+            "SELECT requests FROM carrier_budget WHERE day = ? AND carrier = ?",
+            (day, carrier),
+        ).fetchone()
+        return int(row["requests"]) if row else 0
 
     def requests_today(self, today: date | None = None) -> int:
         day = _iso(today or date.today())

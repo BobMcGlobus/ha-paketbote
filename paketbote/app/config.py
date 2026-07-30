@@ -47,6 +47,7 @@ class Config:
     jitter_percent: int = 20
     quiet_hours_start: int = 22
     quiet_hours_end: int = 6
+    dhl_api_key: str = ""
     dump_on_start: bool = False
     developer_mode: bool = False
     log_level: str = "info"

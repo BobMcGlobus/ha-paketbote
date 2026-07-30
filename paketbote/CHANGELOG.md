@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0
+
+- **DHL-Anbindung über die offizielle API.** Meldet Amazon DHL als Zusteller
+  und ist `dhl_api_key` gesetzt, kommt der Status direkt von DHL: genauer als
+  Amazons Trackingseite und ohne Amazon-Abruf. Zustellfenster inklusive, sofern
+  die Empfänger-PLZ aus der Lieferadresse ermittelt werden konnte
+- Rate-Limits der kostenlosen Stufe werden eingehalten (250/Tag, 1 alle 5 s)
+  und getrennt vom Amazon-Budget gezählt
+- Neue Struktur `app/carriers/`: Quellen (was ist bestellt) und Zusteller (wo
+  ist es) sind getrennt. Grundlage für weitere Zusteller und Quellen
+- Sendungsnummer wird gespeichert; bestehende Datenbanken werden migriert
+
 ## 0.6.3
 
 - **Google Chrome war seit 0.6.0 gar nicht mehr im Image.** Beim KasmVNC-Rückbau

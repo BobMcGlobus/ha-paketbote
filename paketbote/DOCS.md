@@ -71,6 +71,7 @@ Sendung. In Automationen deshalb `entity_id` verwenden, nie `device_id`.
 | `amazon_domain` | `amazon.de` | Bestimmt Übersicht und Tracker-URLs |
 | `llm_provider` / `llm_model` | `gemini` / `gemini-2.5-flash` | Nur für den Fallback |
 | `llm_api_key` | leer | **Optional.** Ohne Key läuft alles weiter, nur ohne Fallback |
+| `dhl_api_key` | leer | **Optional.** Schaltet die DHL-Abfrage frei |
 | `poll_idle_minutes` | 60 | Keine aktive Sendung |
 | `poll_pending_minutes` | 15 | Zustellung heute, Fenster noch zu |
 | `poll_window_minutes` | 10 | Fenster offen |
@@ -104,6 +105,22 @@ Der Abruf läuft zweistufig:
 Ohne diese Vorauswahl würde jeder Zyklus so viele Tracker-Seiten öffnen, wie du
 offene Bestellungen hast. Erkennt die Vorauswahl den Kartentext nicht, gilt die
 Sendung als aktiv — ein Request zu viel ist besser als eine verpasste Zustellung.
+
+### Zusteller statt Shop fragen
+
+Quelle und Zusteller sind getrennt: die Quelle (Amazon) sagt, *was* bestellt
+ist und liefert die Sendungsnummer — der Zusteller sagt, *wo* das Paket ist.
+
+Ist `dhl_api_key` gesetzt und meldet Amazon DHL als Zusteller, wird der Status
+direkt bei DHL geholt. Das ist genauer als Amazons Trackingseite und kostet
+keinen Amazon-Abruf. Zustellfenster gibt DHL nur heraus, wenn die Postleitzahl
+des Empfängers mitgeschickt wird; die kommt aus der Lieferadresse.
+
+Kostenlos, 250 Abrufe pro Tag, höchstens einer alle fünf Sekunden — beides wird
+eingehalten und separat vom Amazon-Budget gezählt. Einen Schlüssel gibt es auf
+`developer.dhl.com` unter *Shipment Tracking — Unified*.
+
+AMZL-Sendungen bleiben beim Amazon-Weg; dafür gibt es keine Alternative.
 
 ### CSS zuerst, LLM nur im Notfall
 

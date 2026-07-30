@@ -60,7 +60,7 @@ Das Projekt wird in Phasen gebaut; jede endet mit einem lauffähigen Zustand.
 | 4 | Scheduler / Polling-Zustandsmaschine | ✅ |
 | 5 | MQTT Discovery | ✅ |
 | 6 | Härtung (Backoff, Request-Cap, Gesundheitssensor) | teilweise |
-| 7 | DHL über die offizielle API | offen |
+| 7 | DHL über die offizielle API | ✅ |
 
 **Aktuell nutzbar:** Entities in Home Assistant. Der Browser im Panel bleibt
 für Login, MFA und Captcha zuständig.

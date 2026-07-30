@@ -62,6 +62,7 @@ class Shipment:
     # the expensive tracker page — decides whether a shipment is worth opening.
     overview_text: str = ""
     carrier: str | None = None
+    tracking_code: str = ""
     status: str = STATUS_UNKNOWN
     stops_remaining: int | None = None
     window_start: time | None = None

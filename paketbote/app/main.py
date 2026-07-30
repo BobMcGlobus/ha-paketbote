@@ -8,6 +8,7 @@ only sequences them and handles the ways the outside world says no.
 from __future__ import annotations
 
 import logging
+import re
 import signal
 import sys
 import time
@@ -16,6 +17,9 @@ from pathlib import Path
 
 from . import __version__
 from .browser import AttachedBrowser, BrowserUnavailable, LoginRequired
+from .carriers import CarrierError, NotFound, RateLimited
+from .carriers import dhl as dhl_carrier
+from .carriers.dhl import DhlTracker
 from .config import Config
 from .extractor import SOURCE_CSS, SOURCE_LLM, extract
 from .models import STATE_DELIVERED, STATUS_DELIVERED, Shipment, ShipmentFacts
@@ -44,6 +48,7 @@ class Paketbote:
         self._throttled = False
         self._last_sources: list[str] = []
         self._last_poll: datetime | None = None
+        self._dhl = DhlTracker(config.dhl_api_key, store)
 
     def stop(self, *_args: object) -> None:
         LOGGER.info("Shutting down")
@@ -151,6 +156,7 @@ class Paketbote:
 
                 previous = known.get(shipment.shipment_id)
                 self._merge(shipment, facts, previous)
+                self._ask_carrier(shipment)
                 shipment.state = state_for(shipment, now, config)
                 shipment.last_seen = now
 
@@ -225,12 +231,53 @@ class Paketbote:
                 shipment.carrier = previous.carrier
             return
 
+        shipment.tracking_code = facts.tracking_code or (
+            previous.tracking_code if previous else ""
+        )
         shipment.status = facts.status
         shipment.stops_remaining = facts.stops_remaining
         shipment.window_start = facts.window_start
         shipment.window_end = facts.window_end
         shipment.expected_date = facts.expected_date
         shipment.carrier = facts.carrier or (previous.carrier if previous else None)
+
+    def _ask_carrier(self, shipment: Shipment) -> None:
+        """Let the carrier answer where the parcel is, when it can.
+
+        DHL knows more about a DHL parcel than Amazon's tracker does, and
+        asking them costs no Amazon request at all.
+        """
+        if not shipment.tracking_code or not self._dhl.available:
+            return
+        if not dhl_carrier.handles(shipment.carrier):
+            return
+
+        try:
+            update = self._dhl.fetch(shipment.tracking_code, _postal_code(shipment))
+        except NotFound:
+            LOGGER.debug("DHL does not know %s yet", shipment.tracking_code)
+            return
+        except RateLimited as err:
+            LOGGER.warning("%s", err)
+            return
+        except CarrierError as err:
+            LOGGER.warning("DHL lookup failed: %s", err)
+            return
+
+        shipment.status = update.status
+        if update.expected_date:
+            shipment.expected_date = update.expected_date
+        if update.window_start:
+            shipment.window_start = update.window_start
+        if update.window_end:
+            shipment.window_end = update.window_end
+
+        LOGGER.info(
+            "DHL: %s is %s%s",
+            shipment.shipment_id,
+            update.status,
+            f" ({update.description})" if update.description else "",
+        )
 
     # -- what Home Assistant sees -----------------------------------------
 
@@ -270,6 +317,12 @@ class Paketbote:
         if SOURCE_LLM in sources:
             return SOURCE_LLM
         return "none"
+
+
+def _postal_code(shipment: Shipment) -> str:
+    """DHL only reveals the delivery window to the recipient, proven by postcode."""
+    match = re.search(r"\b(\d{5})\b", shipment.delivery_address or "")
+    return match.group(1) if match else ""
 
 
 def main() -> int:
