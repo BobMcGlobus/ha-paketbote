@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.2
+
+Panel zeigte nur den Desktop-Hintergrund, keinen Browser.
+
+- Chrome wartete bisher nur auf den **X-Server**, nicht auf den
+  **Window-Manager**. Ein Fenster, das gemappt wird bevor ein WM da ist, wird
+  von keinem platziert oder dimensioniert
+- `--start-maximized` dazu, damit Openbox das Fenster aufzieht
+- Neuer Dienst `window-check`: wartet auf das Browserfenster, protokolliert
+  Bildschirmgröße und tatsächlich gemappte Fenster, und zieht das Fenster auf
+  Bildschirmgröße. Findet er keins, steht das mitsamt Fensterliste im Log
+
 ## 0.5.1
 
 - **401 im Panel behoben.** `-DisableBasicAuth` gilt laut KasmVNC-Doku nur für

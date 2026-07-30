@@ -1,0 +1,44 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Make sure the browser is actually visible in the panel, and say so if not.
+#
+# Chrome can be perfectly alive — the scraper talks to it over CDP — while its
+# window never shows up on the X server. Openbox is meant to place and size it,
+# but it has nothing to fall back on here: KasmVNC's X server reports no
+# Xinerama, and Chrome's own window hints are all it has to go on.
+#
+# So: wait for the window, report what is on screen either way, and stretch it
+# to fill the display.
+# ==============================================================================
+declare -i attempt
+declare window=""
+
+bashio::log.info "Waiting for the browser window on ${DISPLAY}..."
+
+for attempt in $(seq 1 30); do
+    window="$(xdotool search --onlyvisible --class 'chrome' 2>/dev/null | head -n1)"
+    if [[ -n "${window}" ]]; then
+        break
+    fi
+    sleep 2
+done
+
+bashio::log.info "Screen: $(xdpyinfo -display "${DISPLAY}" 2>/dev/null \
+    | awk '/dimensions:/ {print $2}')"
+
+if [[ -z "${window}" ]]; then
+    bashio::log.warning "No browser window appeared on ${DISPLAY} after 60s"
+    bashio::log.warning "Windows currently mapped:"
+    xwininfo -root -children -display "${DISPLAY}" 2>/dev/null \
+        | sed -n '/children:/,$p' | head -20 | while read -r line; do
+            bashio::log.warning "  ${line}"
+        done
+    exit 0
+fi
+
+bashio::log.info "Browser window ${window} found; sizing it to the display"
+xdotool windowmove "${window}" 0 0 2>/dev/null || true
+xdotool windowsize "${window}" 100% 100% 2>/dev/null || true
+xdotool windowactivate "${window}" 2>/dev/null || true
+
+exit 0

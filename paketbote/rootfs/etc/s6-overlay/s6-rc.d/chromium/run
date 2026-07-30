@@ -18,12 +18,25 @@ until xdpyinfo -display "${DISPLAY}" > /dev/null 2>&1; do
     sleep 0.5
 done
 
+# Wait for Openbox to have actually claimed the display, not merely to have
+# been started. A window mapped before a window manager exists is never placed
+# or sized by one, which is a good way to end up with an invisible browser.
+bashio::log.debug "Waiting for a window manager..."
+for _ in $(seq 1 40); do
+    if xprop -root -display "${DISPLAY}" _NET_SUPPORTING_WM_CHECK 2>/dev/null \
+            | grep -q 'window id'; then
+        break
+    fi
+    sleep 0.5
+done
+
 flags=(
     "--user-data-dir=${CHROME_PROFILE}"
     "--remote-debugging-port=9222"
     "--remote-allow-origins=*"
     "--window-position=0,0"
     "--window-size=${width},${height}"
+    "--start-maximized"
     "--lang=de-DE"
     "--password-store=basic"
     "--no-first-run"

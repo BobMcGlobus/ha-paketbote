@@ -25,6 +25,7 @@ RUN set -eux; \
         openbox \
         tzdata \
         x11-utils \
+        xdotool \
     ; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
