@@ -1,6 +1,6 @@
 ---
 name: Paketbote
-version: "0.2.1"
+version: "0.2.2"
 slug: paketbote
 description: Amazon-Lieferverfolgung via persistentem Browser
 url: https://github.com/BobMcGlobus/ha-paketbote

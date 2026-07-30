@@ -104,7 +104,20 @@ class TestConfig(unittest.TestCase):
     def test_defaults_when_options_file_is_absent(self):
         config = Config.load(Path("/nonexistent/options.json"))
         self.assertEqual(config.amazon_domain, "amazon.de")
-        self.assertEqual(config.order_history_url, "https://www.amazon.de/gp/css/order-history")
+
+    def test_overview_url_asks_for_open_orders_only(self):
+        self.assertEqual(
+            Config().order_history_url,
+            "https://www.amazon.de/your-orders/orders?orderFilter=open",
+        )
+
+    def test_full_history_url_is_the_unfiltered_one(self):
+        self.assertEqual(Config().full_history_url, "https://www.amazon.de/gp/css/order-history")
+
+    def test_urls_follow_the_configured_domain(self):
+        config = Config(amazon_domain="amazon.co.uk")
+        self.assertTrue(config.order_history_url.startswith("https://www.amazon.co.uk/"))
+        self.assertTrue(config.full_history_url.startswith("https://www.amazon.co.uk/"))
 
     def test_unknown_options_are_ignored(self):
         with tempfile.TemporaryDirectory() as tmp:

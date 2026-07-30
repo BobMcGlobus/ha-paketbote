@@ -60,6 +60,8 @@ class OrderOverview:
 
     text: str
     shipments: list["Shipment"]
+    # Kept so CSS selectors can be written and checked against the real DOM.
+    html: str = ""
 
 
 @dataclass
@@ -74,6 +76,7 @@ class TrackingPage:
     url: str
     page_title: str
     text: str
+    html: str = ""
     fetched_at: datetime = field(default_factory=datetime.now)
 
     @property

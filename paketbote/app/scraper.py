@@ -82,6 +82,17 @@ _COLLECT_TRACKING_LINKS_JS = """
 ({ markers, maxDepth, extraLevels, cardTextLimit }) => {
   const PRODUCT = 'a[href*="/dp/"], a[href*="/gp/product/"]';
   const isTracking = (a) => markers.some((m) => a.href.includes(m));
+
+  // Amazon links each product twice: the thumbnail first, then the title.
+  // Taking querySelector's first hit yields the image link, whose textContent
+  // is empty -- which is how every shipment ended up untitled.
+  const productName = (el) => {
+    for (const link of el.querySelectorAll(PRODUCT)) {
+      const text = (link.textContent || '').trim();
+      if (text.length > 1) return text;
+    }
+    return '';
+  };
   const countTracking = (el) =>
     Array.from(el.querySelectorAll('a[href]')).filter(isTracking).length;
 
@@ -107,7 +118,7 @@ _COLLECT_TRACKING_LINKS_JS = """
     for (let depth = 0; depth < maxDepth && node; depth += 1) {
       if (countTracking(node) > 1) break;
       if (node.querySelector(PRODUCT)) {
-        if (!card) title = (node.querySelector(PRODUCT).textContent || '').trim();
+        if (!title) title = productName(node);
         card = node;
         widened += 1;
         if (widened > extraLevels) break;
@@ -204,9 +215,10 @@ class Scraper:
         self._config = config
         self._browser = browser
 
-    def read_overview(self) -> OrderOverview:
+    def read_overview(self, *, full_history: bool = False, keep_html: bool = False) -> OrderOverview:
         """The cheap tier: one page load, giving both raw text and shipments."""
-        with self._browser.visit(self._config.order_history_url) as page:
+        url = self._config.full_history_url if full_history else self._config.order_history_url
+        with self._browser.visit(url) as page:
             found = page.evaluate(
                 _COLLECT_TRACKING_LINKS_JS,
                 {
@@ -217,6 +229,7 @@ class Scraper:
                 },
             )
             text = extract_text(page)
+            html = page.content() if keep_html else ""
 
         LOGGER.debug("Order overview yielded %d tracking link(s)", len(found))
 
@@ -239,7 +252,7 @@ class Scraper:
             )
 
         LOGGER.info("Found %d shipment(s) on the order overview", len(shipments))
-        return OrderOverview(text=text, shipments=list(shipments.values()))
+        return OrderOverview(text=text, shipments=list(shipments.values()), html=html)
 
     @staticmethod
     def select_active(shipments: list[Shipment]) -> list[Shipment]:
@@ -260,7 +273,7 @@ class Scraper:
         LOGGER.info("%d of %d shipment(s) still active", len(active), len(shipments))
         return active
 
-    def capture(self, shipment: Shipment) -> TrackingPage:
+    def capture(self, shipment: Shipment, *, keep_html: bool = False) -> TrackingPage:
         """Open one tracker page and take its text."""
         with self._browser.visit(shipment.tracking_url) as page:
             return TrackingPage(
@@ -268,9 +281,15 @@ class Scraper:
                 url=page.url,
                 page_title=page.title(),
                 text=extract_text(page),
+                html=page.content() if keep_html else "",
             )
 
-    def capture_all(self, shipments: list[Shipment] | None = None) -> list[TrackingPage]:
+    def capture_all(
+        self,
+        shipments: list[Shipment] | None = None,
+        *,
+        keep_html: bool = False,
+    ) -> list[TrackingPage]:
         """Capture the given shipments, pausing between pages."""
         if shipments is None:
             shipments = self.select_active(self.read_overview().shipments)
@@ -282,7 +301,7 @@ class Scraper:
                 LOGGER.debug("Pausing %.1fs before the next tracker page", delay)
                 time.sleep(delay)
             LOGGER.info("Capturing %s (%s)", shipment.shipment_id, shipment.title or "untitled")
-            captures.append(self.capture(shipment))
+            captures.append(self.capture(shipment, keep_html=keep_html))
         return captures
 
 
@@ -320,6 +339,10 @@ def _emit_overview(overview: OrderOverview, out_dir: Path | None) -> None:
         target = out_dir / "_overview.txt"
         target.write_text(overview.text, encoding="utf-8")
         print(f"-> {target}")
+        if overview.html:
+            dom = out_dir / "_overview.html"
+            dom.write_text(overview.html, encoding="utf-8")
+            print(f"-> {dom}")
         cards = out_dir / "_cards.txt"
         cards.write_text(
             "\n\n".join(
@@ -352,6 +375,10 @@ def _emit(capture: TrackingPage, out_dir: Path | None) -> None:
         target = out_dir / f"{capture.shipment.shipment_id}.txt"
         target.write_text(capture.text, encoding="utf-8")
         print(f"-> {target}")
+        if capture.html:
+            dom = out_dir / f"{capture.shipment.shipment_id}.html"
+            dom.write_text(capture.html, encoding="utf-8")
+            print(f"-> {dom}")
     else:
         print(capture.text or "(no text extracted)")
     print()
@@ -375,10 +402,19 @@ def main(argv: list[str] | None = None) -> int:
         help="only list what the order overview reveals, open no tracker pages",
     )
     parser.add_argument(
-        "--all",
+        "--include-delivered",
         action="store_true",
-        dest="capture_all",
         help="also open shipments the overview reports as delivered",
+    )
+    parser.add_argument(
+        "--full-history",
+        action="store_true",
+        help="start from the complete order history instead of open orders only",
+    )
+    parser.add_argument(
+        "--html",
+        action="store_true",
+        help="with --out, also save each page's DOM for writing CSS selectors",
     )
     parser.add_argument(
         "--out",
@@ -399,7 +435,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with AttachedBrowser(args.cdp_url) as browser:
             scraper = Scraper(config, browser)
-            overview = scraper.read_overview()
+            keep_html = args.html and args.out is not None
+            overview = scraper.read_overview(full_history=args.full_history, keep_html=keep_html)
             _emit_overview(overview, args.out)
 
             if not overview.shipments:
@@ -413,13 +450,15 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
             selected = (
-                overview.shipments if args.capture_all else scraper.select_active(overview.shipments)
+                overview.shipments
+                if args.include_delivered
+                else scraper.select_active(overview.shipments)
             )
             if not selected:
                 print("Every shipment is already delivered; no tracker pages opened.")
                 return 0
 
-            captures = scraper.capture_all(selected)
+            captures = scraper.capture_all(selected, keep_html=keep_html)
 
     except LoginRequired as err:
         LOGGER.error("Amazon wants a human: %s", err)

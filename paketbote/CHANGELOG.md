@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.2
+
+- Einstieg auf `?orderFilter=open` statt der kompletten Historie — zugestellte
+  Bestellungen tauchen gar nicht erst auf. `--full-history` schaltet zurück
+- **Titel-Bug endgültig behoben:** Amazon verlinkt jedes Produkt zweimal, Bild
+  zuerst. `querySelector` nahm den Bild-Link, dessen Text leer ist. Jetzt wird
+  der erste Produktlink mit echtem Text genommen
+- `--html` legt das DOM je Seite mit ab, Grundlage für die CSS-Selektoren in
+  Phase 3. `dump_on_start` nutzt das automatisch
+- Hinweis im Log, dass die Dumps die Lieferadresse enthalten
+- `--all` heißt jetzt `--include-delivered`
+
 ## 0.2.1
 
 Die Bestellübersicht trifft jetzt die Vorauswahl, statt jede Sendung zu öffnen.

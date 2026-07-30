@@ -30,12 +30,16 @@ out="/config/dumps/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "${out}"
 bashio::log.info "dump_on_start: capturing to ${out}"
 
-paketbote --dump --out "${out}"
+# --html keeps the DOM alongside the text: CSS selectors cannot be written
+# against extracted text, only against real markup.
+paketbote --dump --html --out "${out}"
 status=$?
 
 case ${status} in
     0)
         bashio::log.info "dump_on_start: finished, files are in ${out}"
+        bashio::log.warning \
+            "dump_on_start: captures contain your delivery address — scrub before sharing"
         ;;
     2)
         bashio::log.warning \

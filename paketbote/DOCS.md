@@ -57,9 +57,10 @@ Im Panel sitzt ein voll funktionsfähiger, eingeloggter Browser.
 
 Der Abruf läuft zweistufig, und das ist Absicht:
 
-1. **Bestellübersicht** — ein Seitenaufruf. Liefert alle Sendungen, ihre
-   Tracking-Links und den Text der jeweiligen Bestellkarte. Da steht schon
-   Zustelldatum und Status drin.
+1. **Bestellübersicht** — ein Seitenaufruf auf `?orderFilter=open`, also nur
+   offene Bestellungen. Liefert alle Sendungen, ihre Tracking-Links und den
+   Text der jeweiligen Bestellkarte. Da steht schon Zustelldatum und Status
+   drin. Verschwindet eine Sendung aus dieser Liste, ist sie angekommen.
 2. **Progress-Tracker** — ein Aufruf *je Sendung*, teuer. Wird nur für
    Sendungen geöffnet, die die Übersicht nicht als zugestellt meldet.
 
@@ -86,13 +87,19 @@ docker exec addon_local_paketbote paketbote --dump
 |---|---|
 | `paketbote --dump` | Übersicht + Rohtext aller aktiven Sendungen nach stdout |
 | `paketbote --orders-only` | Nur die Sendungsliste mit aktiv/zugestellt, öffnet keine Tracker-Seiten |
-| `paketbote --dump --all` | Öffnet auch die als zugestellt gemeldeten Sendungen |
+| `paketbote --dump --include-delivered` | Öffnet auch die als zugestellt gemeldeten Sendungen |
+| `paketbote --dump --full-history` | Startet auf der kompletten Bestellhistorie statt nur den offenen |
 | `paketbote --dump --out DIR` | Dateien in `DIR`, stdout bleibt eine Übersicht |
+| `paketbote --dump --html --out DIR` | Zusätzlich das DOM je Seite, für CSS-Selektoren |
 | `paketbote --log-level trace` | Zeigt jede Navigation |
 
 Mit `--out` entstehen `_overview.txt` (Rohtext der Bestellübersicht),
 `_cards.txt` (Kartentext je Sendung samt Aktiv-Einstufung) und je aktiver
-Sendung eine `<shipment_id>.txt`.
+Sendung eine `<shipment_id>.txt`. Mit `--html` zusätzlich die `.html`-Fassung.
+
+**Die Dumps enthalten deine Lieferadresse.** Sie liegen im
+Add-on-Config-Verzeichnis, in Studio Code Server unter `/addon_configs/` im
+Ordner, der auf `_paketbote` endet. Vor dem Weitergeben anonymisieren.
 
 Exit-Codes: `0` ok, `2` Amazon verlangt Login/MFA/Captcha, `3` Chrome nicht
 erreichbar.

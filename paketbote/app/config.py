@@ -56,6 +56,16 @@ class Config:
 
     @property
     def order_history_url(self) -> str:
+        """Only orders that are still open.
+
+        Delivered orders never appear, so the cheap tier stays small and a
+        shipment dropping off this list is itself the signal that it arrived.
+        """
+        return f"{self.base_url}/your-orders/orders?orderFilter=open"
+
+    @property
+    def full_history_url(self) -> str:
+        """Every order, delivered ones included. Debugging only."""
         return f"{self.base_url}/gp/css/order-history"
 
     @property
