@@ -1,0 +1,4 @@
+# Playwright's Python package only. `playwright install` is deliberately not
+# run: the scraper attaches over CDP to the Chrome that already runs in this
+# image, so the bundled browser downloads would be ~500 MB of dead weight.
+playwright==1.61.0

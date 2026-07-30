@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# CLI entry point.
+#
+#   paketbote --dump                 raw text of every active shipment
+#   paketbote --orders-only          just what the order overview reveals
+#   paketbote --dump --out /config/dumps
+# ==============================================================================
+export PYTHONPATH=/opt/paketbote
+exec /opt/venv/bin/python -m app.scraper "$@"

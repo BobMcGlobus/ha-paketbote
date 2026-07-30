@@ -8,7 +8,8 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV LANG=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive \
     DISPLAY=:99 \
-    CHROME_PROFILE=/config/chromium-profile
+    CHROME_PROFILE=/config/chromium-profile \
+    PYTHONUNBUFFERED=1
 
 # X stack, VNC bridge, ingress proxy.
 RUN set -eux; \
@@ -48,6 +49,20 @@ RUN set -eux; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Python side. `playwright install` is deliberately NOT run: the scraper
+# attaches over CDP to the Chrome that already lives in this image, so the
+# bundled browser downloads would be ~500 MB of dead weight.
+COPY app/requirements.txt /opt/paketbote/app/requirements.txt
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends python3 python3-venv; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*; \
+    python3 -m venv /opt/venv; \
+    /opt/venv/bin/pip install --no-cache-dir --upgrade pip; \
+    /opt/venv/bin/pip install --no-cache-dir -r /opt/paketbote/app/requirements.txt
+
+COPY app /opt/paketbote/app
 COPY rootfs /
 
 # Build arguments

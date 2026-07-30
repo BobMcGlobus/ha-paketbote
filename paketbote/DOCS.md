@@ -9,8 +9,9 @@ Quelle für Live-Zustelldaten ist der eingeloggte Progress-Tracker auf
 Panel in der HA-Sidebar bereit — inklusive Maus und Tastatur, damit Login, MFA
 und Captchas direkt dort erledigt werden können, auch vom iPhone aus.
 
-**Stand: Phase 1.** Bisher gibt es nur den bedienbaren Browser. Scraping,
-LLM-Extraktion und MQTT folgen in den Phasen 2–5.
+**Stand: Phase 2.** Der Browser ist bedienbar und der Scraper liest die
+Tracking-Seiten als Rohtext aus. Interpretiert wird noch nichts — LLM-Extraktion
+und MQTT folgen in den Phasen 3–5. Entities gibt es also noch keine.
 
 ## Installation
 
@@ -35,6 +36,7 @@ Der erste Start dauert länger, weil Chrome im Image gebaut wird.
 | `quiet_hours_start` / `_end` | 22 / 6 | Nachtruhe: dazwischen nur `IDLE`-Intervall |
 | `daily_request_cap` | 300 | Harter Stopp bis Mitternacht, ab Phase 6 |
 | `jitter_percent` | 20 | Zufallsstreuung auf jedes Intervall |
+| `dump_on_start` | `false` | Beim Start einmal alle Tracking-Seiten nach `/config/dumps/` schreiben |
 | `log_level` | `info` | `trace` zeigt jeden Schritt |
 
 MQTT-Zugangsdaten kommen über die Supervisor-Services-API und stehen bewusst
@@ -50,6 +52,37 @@ MQTT-Zugangsdaten kommen über die Supervisor-Services-API und stehen bewusst
 
 Vor dem Produktivbetrieb: **1-Click-Bestellung im Amazon-Konto deaktivieren.**
 Im Panel sitzt ein voll funktionsfähiger, eingeloggter Browser.
+
+## Sendungen auslesen
+
+Der Scraper hängt sich per CDP an den laufenden Chrome, sucht auf der
+Bestellübersicht alle Links auf Tracking-Seiten, öffnet die Seiten der Reihe
+nach in sichtbaren Tabs (2–5 s Pause dazwischen) und gibt den Rohtext aus. Beim
+Debuggen kannst du im Panel zusehen.
+
+**Ohne SSH:** Option `dump_on_start` auf `true`, Add-on neu starten. Nach dem
+Start liegen die Captures unter `/config/dumps/<Zeitstempel>/` — eine `.txt` je
+Sendung, erreichbar über File Editor oder Samba. Danach die Option wieder
+ausschalten.
+
+**Mit Terminal:** im Add-on-Container steht `paketbote` bereit.
+
+```bash
+docker exec addon_local_paketbote paketbote --dump
+```
+
+| Aufruf | Wirkung |
+|---|---|
+| `paketbote --dump` | Rohtext aller aktiven Sendungen nach stdout |
+| `paketbote --orders-only` | Nur die Sendungsliste, öffnet keine Tracker-Seiten |
+| `paketbote --dump --out DIR` | Je Sendung eine `.txt` in `DIR`, stdout bleibt eine Übersicht |
+| `paketbote --log-level trace` | Zeigt jede Navigation |
+
+Exit-Codes: `0` ok, `2` Amazon verlangt Login/MFA/Captcha, `3` Chrome nicht
+erreichbar.
+
+Verlangt Amazon eine Interaktion, bricht der Scraper sauber mit `LoginRequired`
+ab statt zu crashen. Panel öffnen, Challenge erledigen, erneut laufen lassen.
 
 ## Wie das intern läuft
 

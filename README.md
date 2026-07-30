@@ -55,14 +55,15 @@ Das Projekt wird in Phasen gebaut; jede endet mit einem lauffähigen Zustand.
 |---|---|---|
 | 0 | Vorbedingungen (HA OS, amd64, Supervisor) | ✅ |
 | 1 | Add-on-Skelett + bedienbarer Browser | ✅ |
-| 2 | Scraper-Kern (Playwright über CDP) | offen |
+| 2 | Scraper-Kern (Playwright über CDP) | ✅ |
 | 3 | LLM-Extraktion der Tracking-Seiten | offen |
 | 4 | Scheduler / Polling-Zustandsmaschine | offen |
 | 5 | MQTT Discovery | offen |
 | 6 | Härtung (WAF-Erkennung, Backoff, Request-Cap) | offen |
 | 7 | DHL über die offizielle API | offen |
 
-**Aktuell nutzbar:** der Browser im Panel. Entities gibt es ab Phase 5.
+**Aktuell nutzbar:** der Browser im Panel und `paketbote --dump`, das die
+Tracking-Seiten als Rohtext ausgibt. Entities gibt es ab Phase 5.
 
 ## Voraussetzungen
 

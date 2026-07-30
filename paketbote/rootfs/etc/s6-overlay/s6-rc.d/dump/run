@@ -1,0 +1,50 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Optional one-shot capture at start-up.
+#
+# Writes raw tracker text to /config/dumps so the phase 3 fixtures can be
+# collected from a phone, without SSH and without `docker exec`.
+# ==============================================================================
+declare out
+declare -i status
+
+if ! bashio::config.true 'dump_on_start'; then
+    bashio::log.debug "dump_on_start is off; skipping capture"
+    exit 0
+fi
+
+bashio::log.info "dump_on_start: waiting for Chrome's debugging port..."
+for _ in $(seq 1 60); do
+    if curl -sf http://127.0.0.1:9222/json/version > /dev/null 2>&1; then
+        break
+    fi
+    sleep 2
+done
+
+if ! curl -sf http://127.0.0.1:9222/json/version > /dev/null 2>&1; then
+    bashio::log.error "dump_on_start: Chrome never answered on port 9222; skipping"
+    exit 0
+fi
+
+out="/config/dumps/$(date +%Y%m%d-%H%M%S)"
+mkdir -p "${out}"
+bashio::log.info "dump_on_start: capturing to ${out}"
+
+paketbote --dump --out "${out}"
+status=$?
+
+case ${status} in
+    0)
+        bashio::log.info "dump_on_start: finished, files are in ${out}"
+        ;;
+    2)
+        bashio::log.warning \
+            "dump_on_start: Amazon wants a login — open the panel, finish it, restart the add-on"
+        ;;
+    *)
+        bashio::log.warning "dump_on_start: scraper exited with ${status}"
+        ;;
+esac
+
+# Never fail the container over a diagnostic capture.
+exit 0

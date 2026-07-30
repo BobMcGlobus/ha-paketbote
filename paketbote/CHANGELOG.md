@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0
+
+Phase 2 — Scraper-Kern. Liest, interpretiert aber nichts.
+
+- Playwright hängt sich per `connect_over_cdp` an den laufenden Chrome und
+  benutzt dessen Profil-Context, also die eingeloggte Session
+- Sendungserkennung auf der Bestellübersicht über Tracking-URLs statt über
+  CSS-Klassen
+- Rohtext-Extraktion je Tracking-Seite, 2–5 s Pause zwischen den Seiten
+- Login-/MFA-/Captcha-Erkennung: sauberes `LoginRequired` statt Crash
+- CLI `paketbote --dump`, plus Option `dump_on_start` für den Weg ohne SSH
+- Unit-Tests für Sendungs-IDs, Textnormalisierung und Optionen
+
 ## 0.1.0
 
 Phase 1 — add-on skeleton with a usable browser. No scraping yet.

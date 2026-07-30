@@ -1,6 +1,6 @@
 ---
 name: Paketbote
-version: "0.1.0"
+version: "0.2.0"
 slug: paketbote
 description: Amazon-Lieferverfolgung via persistentem Browser
 url: https://github.com/BobMcGlobus/ha-paketbote
@@ -48,6 +48,7 @@ options:
   jitter_percent: 20
   quiet_hours_start: 22
   quiet_hours_end: 6
+  dump_on_start: false
   log_level: info
 
 schema:
@@ -68,4 +69,5 @@ schema:
   jitter_percent: int(0,50)
   quiet_hours_start: int(0,23)
   quiet_hours_end: int(0,23)
+  dump_on_start: bool
   log_level: list(trace|debug|info|warning|error)
