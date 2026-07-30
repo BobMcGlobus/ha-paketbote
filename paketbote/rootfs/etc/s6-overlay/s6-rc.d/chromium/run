@@ -1,0 +1,45 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# The long-lived browser process. Deliberately NOT started by Playwright:
+# the scraper attaches over CDP later, so restarting or crashing the scraper
+# never touches the logged-in session.
+# ==============================================================================
+declare -a flags
+declare -i width height
+declare domain start_url
+
+width=$(bashio::config 'display_width')
+height=$(bashio::config 'display_height')
+domain=$(bashio::config 'amazon_domain')
+start_url="https://www.${domain}/gp/css/order-history"
+
+bashio::log.debug "Waiting for X display ${DISPLAY}..."
+until xdpyinfo -display "${DISPLAY}" > /dev/null 2>&1; do
+    sleep 0.5
+done
+
+flags=(
+    "--user-data-dir=${CHROME_PROFILE}"
+    "--remote-debugging-port=9222"
+    "--remote-allow-origins=*"
+    "--window-position=0,0"
+    "--window-size=${width},${height}"
+    "--lang=de-DE"
+    "--password-store=basic"
+    "--no-first-run"
+    "--no-default-browser-check"
+    "--disable-session-crashed-bubble"
+    "--disable-features=Translate"
+    # No user namespaces inside the add-on container.
+    "--no-sandbox"
+    # Docker gives /dev/shm 64 MB, which is not enough for a real browser.
+    "--disable-dev-shm-usage"
+)
+
+bashio::log.info "Starting Chrome with profile ${CHROME_PROFILE}..."
+
+if command -v dbus-run-session > /dev/null 2>&1; then
+    exec dbus-run-session -- google-chrome-stable "${flags[@]}" "${start_url}"
+fi
+
+exec google-chrome-stable "${flags[@]}" "${start_url}"

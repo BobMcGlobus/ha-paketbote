@@ -1,0 +1,11 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Shared s6 finish handler for services that are worth restarting rather than
+# fatal. The pause stops a persistent failure from turning into a hot loop.
+#
+# Usage: restart-backoff <service-name> <exit-code> <signal>
+# ==============================================================================
+bashio::log.warning \
+    "Service ${1} exited with code ${2} (signal ${3}); restarting"
+
+sleep 2

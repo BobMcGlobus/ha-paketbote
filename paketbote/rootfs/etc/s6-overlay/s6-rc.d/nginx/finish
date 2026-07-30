@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec /etc/s6-overlay/scripts/halt-on-failure "nginx" "${1}" "${2}"

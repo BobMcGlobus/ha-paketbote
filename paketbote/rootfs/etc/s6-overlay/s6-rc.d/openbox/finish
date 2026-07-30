@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec /etc/s6-overlay/scripts/restart-backoff "openbox" "${1}" "${2}"

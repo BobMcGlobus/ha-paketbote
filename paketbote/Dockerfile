@@ -1,0 +1,74 @@
+ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base:9.3.0
+# hadolint ignore=DL3006
+FROM ${BUILD_FROM}
+
+# shellcheck shell=bash
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+ENV LANG=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive \
+    DISPLAY=:99 \
+    CHROME_PROFILE=/config/chromium-profile
+
+# X stack, VNC bridge, ingress proxy.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        dbus-x11 \
+        fonts-liberation \
+        fonts-noto-color-emoji \
+        gnupg \
+        nginx-light \
+        novnc \
+        openbox \
+        tzdata \
+        websockify \
+        x11-utils \
+        x11vnc \
+        xvfb \
+    ; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*
+
+# Google Chrome rather than Debian's chromium: this browser talks to Amazon
+# while logged in, and a stock Chrome build is the least remarkable client
+# there is. Playwright attaches over CDP later, so Chrome is never launched
+# with --enable-automation and navigator.webdriver stays undefined.
+RUN set -eux; \
+    echo 'repo_add_once=false' > /etc/default/google-chrome; \
+    install -d -m 0755 /etc/apt/keyrings; \
+    curl -fsSL https://dl.google.com/linux/linux_signing_key.pub \
+        | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg; \
+    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" \
+        > /etc/apt/sources.list.d/google-chrome.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends google-chrome-stable; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+COPY rootfs /
+
+# Build arguments
+ARG BUILD_ARCH
+ARG BUILD_DATE
+ARG BUILD_DESCRIPTION
+ARG BUILD_NAME
+ARG BUILD_REF
+ARG BUILD_REPOSITORY
+ARG BUILD_VERSION
+
+LABEL \
+    io.hass.name="${BUILD_NAME}" \
+    io.hass.description="${BUILD_DESCRIPTION}" \
+    io.hass.arch="${BUILD_ARCH}" \
+    io.hass.type="addon" \
+    io.hass.version=${BUILD_VERSION} \
+    maintainer="BobMcGlobus <jonas.althoff@mcglobus.de>" \
+    org.opencontainers.image.title="${BUILD_NAME}" \
+    org.opencontainers.image.description="${BUILD_DESCRIPTION}" \
+    org.opencontainers.image.source="https://github.com/${BUILD_REPOSITORY}" \
+    org.opencontainers.image.created=${BUILD_DATE} \
+    org.opencontainers.image.revision=${BUILD_REF} \
+    org.opencontainers.image.version=${BUILD_VERSION}

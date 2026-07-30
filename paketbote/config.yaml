@@ -1,0 +1,71 @@
+---
+name: Paketbote
+version: "0.1.0"
+slug: paketbote
+description: Amazon-Lieferverfolgung via persistentem Browser
+url: https://github.com/BobMcGlobus/hassio-addon-paketbote
+arch:
+  - amd64
+init: false
+startup: services
+boot: auto
+
+# Ingress serves the noVNC panel through Home Assistant's own authentication,
+# so no VNC port is ever exposed on the host.
+ingress: true
+ingress_port: 6080
+panel_icon: mdi:package-variant-closed
+panel_title: Paketbote
+watchdog: "tcp://[HOST]:[PORT:6080]"
+
+# Chrome needs to unshare namespaces and ptrace its own children; the default
+# add-on AppArmor profile denies both. The browser runs with --no-sandbox and
+# has no host access beyond its own config volume.
+apparmor: false
+
+map:
+  # Mounted at /config inside the container: Chrome profile + state database.
+  - addon_config:rw
+
+services:
+  # Broker credentials come from the Supervisor services API, never from options.
+  - mqtt:want
+
+options:
+  display_width: 1280
+  display_height: 1024
+  amazon_domain: amazon.de
+  llm_provider: gemini
+  llm_model: gemini-2.5-flash
+  poll_idle_minutes: 60
+  poll_pending_minutes: 15
+  poll_window_minutes: 10
+  poll_approaching_minutes: 3
+  poll_imminent_minutes: 1
+  approaching_stops_threshold: 7
+  imminent_stops_threshold: 2
+  daily_request_cap: 300
+  jitter_percent: 20
+  quiet_hours_start: 22
+  quiet_hours_end: 6
+  log_level: info
+
+schema:
+  display_width: int(640,3840)
+  display_height: int(480,2160)
+  amazon_domain: str
+  llm_provider: list(gemini|openai|anthropic)
+  llm_model: str
+  llm_api_key: password?
+  poll_idle_minutes: int(5,1440)
+  poll_pending_minutes: int(1,240)
+  poll_window_minutes: int(1,120)
+  poll_approaching_minutes: int(1,60)
+  poll_imminent_minutes: int(1,30)
+  approaching_stops_threshold: int(1,50)
+  imminent_stops_threshold: int(1,20)
+  daily_request_cap: int(50,2000)
+  jitter_percent: int(0,50)
+  quiet_hours_start: int(0,23)
+  quiet_hours_end: int(0,23)
+  log_level: list(trace|debug|info|warning|error)

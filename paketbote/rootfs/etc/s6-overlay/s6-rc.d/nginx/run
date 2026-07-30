@@ -1,0 +1,7 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Ingress entry point: the only port Home Assistant talks to.
+# ==============================================================================
+bashio::log.info "Starting nginx on port 6080 (ingress)..."
+
+exec nginx -c /etc/nginx/nginx.conf
