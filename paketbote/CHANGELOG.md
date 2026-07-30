@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.3
+
+- **Google Chrome war seit 0.6.0 gar nicht mehr im Image.** Beim KasmVNC-Rückbau
+  habe ich den Dockerfile-Block über einen Textbereich entfernt — und der
+  Chrome-Installationsblock lag genau dazwischen. Geprüft hatte ich nur, dass
+  KasmVNC weg ist, nicht was übrig blieb. Das erklärt die schwarzen Desktops
+  seit v0.6.0
+- **Der Build prüft das jetzt selbst.** Fehlt eines der nötigen Programme
+  (Chrome, Xvfb, x11vnc, websockify, nginx, …) oder eine Python-Abhängigkeit,
+  schlägt der Build fehl, statt ein Image auszuliefern, das erst auf der
+  Instanz auffällt
+- **Neustart-Backoff wächst.** Ein Dienst, der überhaupt nicht startet, hat
+  sich im Sekundentakt neu gestartet und den Log geflutet. Jetzt 2 s, ab dem
+  fünften Fehlschlag 10 s, ab dem fünfzehnten 30 s — mit einer klaren
+  Fehlermeldung statt zwanzig gleichen Warnungen
+
 ## 0.6.2
 
 - **Gespeicherte Fensterposition wird beim Start verworfen.** Chrome merkt sich

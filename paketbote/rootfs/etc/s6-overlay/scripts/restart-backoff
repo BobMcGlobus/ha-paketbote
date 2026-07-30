@@ -1,21 +1,62 @@
 #!/command/with-contenv bashio
 # ==============================================================================
-# Shared s6 finish handler for services that are worth restarting rather than
-# fatal. The pause stops a persistent failure from turning into a hot loop.
+# Shared s6 finish handler for services worth restarting rather than fatal.
+#
+# The pause grows with consecutive failures. A service that cannot start at all
+# would otherwise respawn every second or two forever, filling the log with the
+# same line and hiding the one that matters.
 #
 # Usage: restart-backoff <service-name> <exit-code> <signal>
 # ==============================================================================
+set +o nounset
+
 declare -r service="${1}"
 declare -r exit_code="${2}"
 declare -r exit_signal="${3}"
+declare -r state="/run/paketbote/${service}.fails"
 
 # Exit code 256 means "killed by a signal"; SIGTERM is s6 shutting the add-on
 # down, not a failure. Announcing a restart there is both wrong and slow.
 if [[ "${exit_code}" -eq 256 ]] && [[ "${exit_signal}" -eq 15 ]]; then
     bashio::log.debug "Service ${service} stopped on shutdown"
+    rm -f "${state}" 2>/dev/null
     exit 0
 fi
 
-bashio::log.warning "Service ${service} exited with code ${exit_code} (signal ${exit_signal})"
+mkdir -p /run/paketbote 2>/dev/null
 
-sleep 1
+declare -i failures=0
+declare -i previous=0
+declare -i now
+now=$(date +%s)
+
+if [[ -f "${state}" ]]; then
+    read -r failures previous < "${state}" 2>/dev/null || failures=0
+fi
+
+# A service that stayed up for a while starts counting from scratch.
+if (( now - previous > 120 )); then
+    failures=0
+fi
+failures=$(( failures + 1 ))
+printf '%s %s\n' "${failures}" "${now}" > "${state}" 2>/dev/null
+
+declare -i delay=2
+if (( failures >= 15 )); then
+    delay=30
+elif (( failures >= 5 )); then
+    delay=10
+fi
+
+if (( failures == 5 )); then
+    bashio::log.error \
+        "Service ${service} has failed ${failures} times in a row; slowing restarts down"
+fi
+
+if (( failures < 5 )) || (( failures % 10 == 0 )); then
+    bashio::log.warning \
+        "Service ${service} exited with code ${exit_code} (signal ${exit_signal})," \
+        "attempt ${failures}, retrying in ${delay}s"
+fi
+
+sleep "${delay}"

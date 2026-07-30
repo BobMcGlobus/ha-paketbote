@@ -34,6 +34,22 @@ RUN set -eux; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
+# Google Chrome rather than Debian's chromium: this browser talks to Amazon
+# while logged in, and a stock Chrome build is the least remarkable client
+# there is. Playwright attaches over CDP later, so Chrome is never launched
+# with --enable-automation and navigator.webdriver stays undefined.
+RUN set -eux; \
+    echo 'repo_add_once=false' > /etc/default/google-chrome; \
+    install -d -m 0755 /etc/apt/keyrings; \
+    curl -fsSL https://dl.google.com/linux/linux_signing_key.pub \
+        | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg; \
+    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" \
+        > /etc/apt/sources.list.d/google-chrome.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends google-chrome-stable; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 # Python side. `playwright install` is deliberately NOT run: the scraper
 # attaches over CDP to the Chrome that already lives in this image, so the
 # bundled browser downloads would be ~500 MB of dead weight.
@@ -49,6 +65,18 @@ RUN set -eux; \
 
 COPY app /opt/paketbote/app
 COPY rootfs /
+
+# Fail the build rather than ship an image whose browser is missing. This block
+# exists because a careless edit once removed the Chrome installation and it
+# only surfaced as a restart loop on the user's instance.
+RUN set -eux; \
+    for binary in google-chrome-stable Xvfb x11vnc websockify openbox nginx \
+                  xdotool xdpyinfo xwininfo python3; do \
+        command -v "${binary}" > /dev/null || { echo "missing: ${binary}"; exit 1; }; \
+    done; \
+    test -f /usr/share/novnc/vnc.html; \
+    test -x /opt/venv/bin/python; \
+    /opt/venv/bin/python -c "import playwright, paho.mqtt.client, requests"
 
 # Build arguments
 ARG BUILD_ARCH
