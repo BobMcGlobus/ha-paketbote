@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.3
+
+Aus den echten Seiten-Dumps: Amazon hat brauchbare semantische Container.
+
+- **Textextraktion auf `.pt-card` / `.order-card` verengt.** Eine Tracker-Seite
+  schrumpft damit von ~7.600 Zeichen Navigation, Empfehlungen und Footer auf
+  ~130 Zeichen, die vollständig Nutzlast sind. Das war vorher 3,6 % Signal
+- Nebeneffekt: die Lieferadresse steckt nicht mehr im Text-Dump
+- Greift kein Amazon-Container, wird auf `#pageContainer`/`main`/`body`
+  zurückgefallen **und eine Warnung geloggt** — die Vorstufe des
+  Selektoren-Gesundheitssensors
+- Der verwendete Container steht jetzt in der Dump-Ausgabe
+
 ## 0.2.2
 
 - Einstieg auf `?orderFilter=open` statt der kompletten Historie — zugestellte

@@ -62,6 +62,8 @@ class OrderOverview:
     shipments: list["Shipment"]
     # Kept so CSS selectors can be written and checked against the real DOM.
     html: str = ""
+    # Which container the text came from. A generic one means Amazon moved.
+    content_selector: str = ""
 
 
 @dataclass
@@ -77,6 +79,7 @@ class TrackingPage:
     page_title: str
     text: str
     html: str = ""
+    content_selector: str = ""
     fetched_at: datetime = field(default_factory=datetime.now)
 
     @property

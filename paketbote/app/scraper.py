@@ -35,8 +35,19 @@ LOGGER = logging.getLogger(__name__)
 # reorganises its order pages.
 TRACKING_HREF_MARKERS = ("progress-tracker", "ship-track", "shipment-tracking")
 
-# Containers tried in order when reading a tracker page, most specific first.
-MAIN_CONTAINER_CANDIDATES = ("#pt-page-container", "main", "#a-page", "body")
+# Amazon's own semantic containers. `pt-` is the progress tracker, `order-card`
+# the order overview. Reading these instead of the whole body turns a tracker
+# page from ~7.600 characters of navigation and recommendations into ~130
+# characters that are all payload.
+PRIMARY_CONTENT_SELECTORS = (".pt-card", ".order-card")
+
+# Used when the selectors above find nothing, which is the signal that Amazon
+# changed its markup: still usable, but noisy and worth reporting.
+FALLBACK_CONTENT_SELECTORS = ("#pageContainer", "main", "#a-page", "body")
+
+CONTENT_SELECTORS = PRIMARY_CONTENT_SELECTORS + FALLBACK_CONTENT_SELECTORS
+
+_TEXTS_JS = "els => els.map((e) => (e.innerText || '').trim()).filter(Boolean)"
 
 RAW_TEXT_LIMIT = 20_000
 CARD_TEXT_LIMIT = 2_000
@@ -191,21 +202,37 @@ def normalise_text(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 
 
-def extract_text(page: Page) -> str:
-    """Visible text of the most specific container that actually has content."""
-    for selector in MAIN_CONTAINER_CANDIDATES:
+def extract_text(page: Page) -> tuple[str, str]:
+    """Visible text of the most specific container that has content.
+
+    Returns the text and the selector it came from. That selector is the health
+    signal: falling through to a generic container means Amazon's markup moved.
+    """
+    for selector in CONTENT_SELECTORS:
         try:
-            locator = page.locator(selector)
-            if locator.count() == 0:
-                continue
-            text = locator.first.inner_text(timeout=5_000)
+            texts = page.eval_on_selector_all(selector, _TEXTS_JS)
         except (PlaywrightError, PlaywrightTimeout):
             LOGGER.debug("Could not read container %s", selector, exc_info=True)
             continue
-        if text and text.strip():
-            LOGGER.debug("Read %d characters from %s", len(text), selector)
-            return normalise_text(text)[:RAW_TEXT_LIMIT]
-    return ""
+        if not texts:
+            continue
+
+        text = normalise_text("\n".join(texts))
+        if not text:
+            continue
+
+        if selector in FALLBACK_CONTENT_SELECTORS:
+            LOGGER.warning(
+                "No Amazon content container matched on %s; fell back to %r. "
+                "The markup has probably changed.",
+                page.url,
+                selector,
+            )
+        else:
+            LOGGER.debug("Read %d characters from %r", len(text), selector)
+        return text[:RAW_TEXT_LIMIT], selector
+
+    return "", ""
 
 
 class Scraper:
@@ -228,7 +255,7 @@ class Scraper:
                     "cardTextLimit": CARD_TEXT_LIMIT,
                 },
             )
-            text = extract_text(page)
+            text, selector = extract_text(page)
             html = page.content() if keep_html else ""
 
         LOGGER.debug("Order overview yielded %d tracking link(s)", len(found))
@@ -252,7 +279,12 @@ class Scraper:
             )
 
         LOGGER.info("Found %d shipment(s) on the order overview", len(shipments))
-        return OrderOverview(text=text, shipments=list(shipments.values()), html=html)
+        return OrderOverview(
+            text=text,
+            shipments=list(shipments.values()),
+            html=html,
+            content_selector=selector,
+        )
 
     @staticmethod
     def select_active(shipments: list[Shipment]) -> list[Shipment]:
@@ -276,12 +308,14 @@ class Scraper:
     def capture(self, shipment: Shipment, *, keep_html: bool = False) -> TrackingPage:
         """Open one tracker page and take its text."""
         with self._browser.visit(shipment.tracking_url) as page:
+            text, selector = extract_text(page)
             return TrackingPage(
                 shipment=shipment,
                 url=page.url,
                 page_title=page.title(),
-                text=extract_text(page),
+                text=text,
                 html=page.content() if keep_html else "",
+                content_selector=selector,
             )
 
     def capture_all(
@@ -327,6 +361,7 @@ def _emit_overview(overview: OrderOverview, out_dir: Path | None) -> None:
     print("ORDER OVERVIEW")
     print(f"shipments   : {len(overview.shipments)}")
     print(f"characters  : {len(overview.text)}")
+    print(f"container   : {overview.content_selector or 'none'}")
     print(rule)
 
     for shipment in overview.shipments:
@@ -368,6 +403,7 @@ def _emit(capture: TrackingPage, out_dir: Path | None) -> None:
     print(f"page_title  : {capture.page_title}")
     print(f"fetched_at  : {capture.fetched_at.isoformat(timespec='seconds')}")
     print(f"characters  : {len(capture.text)}")
+    print(f"container   : {capture.content_selector or 'none'}")
     print(rule)
 
     if out_dir is not None:
