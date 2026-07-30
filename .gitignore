@@ -3,3 +3,6 @@ __pycache__/
 .venv/
 .DS_Store
 *.db
+
+# Arbeitsnotizen, kein Repo-Inhalt
+NOTES-*.md

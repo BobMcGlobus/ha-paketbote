@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.1
+
+Chromes Umgebung exakt zurück auf den Stand, in dem das Browserfenster zuletzt
+nachweislich sichtbar war (v0.2.3).
+
+- `--disable-gpu` raus (kam in 0.5.4 gegen KasmVNCs sterbenden GPU-Prozess)
+- `--start-maximized` raus (kam in 0.5.2 gegen einen vermuteten
+  Platzierungsfehler)
+- `XDG_RUNTIME_DIR` raus (kam in 0.3.0, weil KasmVNC eins wollte)
+
+Alle drei entstanden als Umgehungen KasmVNC-spezifischer Probleme, die es ohne
+KasmVNC nicht gibt — und alle drei kamen nach der letzten Version, in der der
+Browser zu sehen war.
+
 ## 0.6.0
 
 - **Zurück auf Xvfb + x11vnc + noVNC.** KasmVNC lieferte ein Panel, in dem das
