@@ -10,10 +10,17 @@
 # No authentication of any kind is configured on purpose: the port stays on
 # loopback and Home Assistant's ingress is what authenticates the user.
 # ==============================================================================
-declare -i width height
+declare -i width height verbosity
 
 width=$(bashio::config 'display_width')
 height=$(bashio::config 'display_height')
+
+# Louder on debug, so an authentication refusal says which kind it was.
+verbosity=10
+case "$(bashio::config 'log_level')" in
+    debug) verbosity=30 ;;
+    trace) verbosity=100 ;;
+esac
 
 bashio::log.info "Starting KasmVNC on ${DISPLAY} at ${width}x${height}..."
 
@@ -29,4 +36,4 @@ exec Xkasmvnc "${DISPLAY}" \
     -AlwaysShared \
     -sslOnly 0 \
     -RectThreads 0 \
-    -Log "*:stdout:10"
+    -Log "*:stdout:${verbosity}"

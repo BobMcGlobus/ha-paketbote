@@ -57,17 +57,18 @@ class Config:
 
     @property
     def order_history_url(self) -> str:
-        """Only orders that are still open.
+        """The plain order list.
 
-        Delivered orders never appear, so the cheap tier stays small and a
-        shipment dropping off this list is itself the signal that it arrived.
+        Note on `?orderFilter=open`: that filter is Amazon's "Not Yet
+        Dispatched" tab, not "still in transit". It hides exactly the packages
+        that are already on their way, so it is useless here.
         """
-        return f"{self.base_url}/your-orders/orders?orderFilter=open"
+        return f"{self.base_url}/gp/css/order-history"
 
     @property
-    def full_history_url(self) -> str:
-        """Every order, delivered ones included. Debugging only."""
-        return f"{self.base_url}/gp/css/order-history"
+    def undispatched_url(self) -> str:
+        """Amazon's "Not Yet Dispatched" tab. Kept for diagnostics only."""
+        return f"{self.base_url}/your-orders/orders?orderFilter=open"
 
     @property
     def python_log_level(self) -> int:

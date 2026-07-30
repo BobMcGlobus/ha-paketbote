@@ -128,14 +128,9 @@ class Paketbote:
             known = {s.shipment_id: s for s in self._store.all_shipments()}
             seen = {s.shipment_id for s in overview.shipments}
 
-            # Gone from the open-orders list means it arrived. That is exactly
-            # why the overview asks for open orders only.
+            # Orders drop off the list once they age out of Amazon's window.
             for shipment_id in set(known) - seen:
-                LOGGER.info("%s left the open orders list; treating as delivered", shipment_id)
-                gone = known[shipment_id]
-                gone.status = STATUS_DELIVERED
-                gone.state = STATE_DELIVERED
-                self._publisher.publish_shipment(gone)
+                LOGGER.info("%s is no longer listed; removing it", shipment_id)
                 self._publisher.retire_shipment(shipment_id)
                 self._store.forget(shipment_id)
 
@@ -163,17 +158,21 @@ class Paketbote:
                 self._publisher.announce_shipment(shipment)
                 self._publisher.publish_shipment(shipment)
 
-            # Shipments the overview reports as delivered but that are still on
-            # the list keep their last known values; only the state moves on.
+            # The overview reports these as delivered. Publish that once, then
+            # take the device out of Home Assistant.
+            active_ids = {s.shipment_id for s in active}
             for shipment in overview.shipments:
-                if shipment.shipment_id in {s.shipment_id for s in active}:
+                if shipment.shipment_id in active_ids:
                     continue
                 stored = known.get(shipment.shipment_id)
                 if stored is None:
                     continue
-                stored.state = state_for(stored, now, config)
-                self._store.save(stored)
+                LOGGER.info("%s is reported delivered; removing it", stored.shipment_id)
+                stored.status = STATUS_DELIVERED
+                stored.state = STATE_DELIVERED
                 self._publisher.publish_shipment(stored)
+                self._publisher.retire_shipment(stored.shipment_id)
+                self._store.forget(stored.shipment_id)
 
             self._last_sources = sources
 
@@ -208,6 +207,14 @@ class Paketbote:
     @staticmethod
     def _merge(shipment: Shipment, facts: ShipmentFacts, previous: Shipment | None) -> None:
         """Apply what was read, keeping what was known when the read was poor."""
+        # The recipient comes from the overview card and the address from the
+        # tracker; keep whichever we already had when the new read is empty.
+        if not shipment.recipient and previous is not None:
+            shipment.recipient = previous.recipient
+        shipment.delivery_address = facts.delivery_address or (
+            previous.delivery_address if previous else ""
+        )
+
         if not facts.is_usable:
             if previous is not None:
                 shipment.status = previous.status

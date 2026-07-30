@@ -53,6 +53,10 @@ class Shipment:
     order_id: str
     tracking_url: str
     title: str = ""
+    # Who this parcel is for. One Amazon account can serve a whole household
+    # living at different addresses, so this is what tells them apart.
+    recipient: str = ""
+    delivery_address: str = ""
     # Visible text of this shipment's card on the order overview. This is the
     # cheap tier: it already carries the delivery date and status, so it — not
     # the expensive tracker page — decides whether a shipment is worth opening.
@@ -84,6 +88,7 @@ class ShipmentFacts:
     promise_text: str = ""
     carrier: str | None = None
     tracking_code: str | None = None
+    delivery_address: str = ""
     source: str = "none"
     confidence: str = "low"
     css_fields: dict[str, bool] = field(default_factory=dict)

@@ -138,6 +138,13 @@ SHIPMENT_ENTITIES: list[dict] = [
     {"key": "expected_date", "component": "sensor", "name": "Erwartet", "icon": "mdi:calendar"},
     {"key": "title", "component": "sensor", "name": "Titel", "icon": "mdi:tag-text"},
     {"key": "carrier", "component": "sensor", "name": "Zusteller", "icon": "mdi:truck"},
+    {"key": "recipient", "component": "sensor", "name": "Empfänger", "icon": "mdi:account"},
+    {
+        "key": "delivery_address",
+        "component": "sensor",
+        "name": "Lieferadresse",
+        "icon": "mdi:map-marker",
+    },
 ]
 
 
@@ -276,6 +283,8 @@ class Publisher:
             "shipment_id": shipment.shipment_id,
             "order_id": shipment.order_id,
             "title": shipment.title,
+            "recipient": shipment.recipient,
+            "delivery_address": shipment.delivery_address,
             "status": shipment.status,
             "state": shipment.state,
             "carrier": shipment.carrier,

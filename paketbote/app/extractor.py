@@ -19,6 +19,7 @@ from .config import Config
 from .models import (
     KNOWN_STATUSES,
     STATUS_DELIVERED,
+    STATUS_ORDERED,
     STATUS_OUT_FOR_DELIVERY,
     STATUS_UNKNOWN,
     ShipmentFacts,
@@ -67,6 +68,9 @@ _READ_TRACKER_JS = """
     mainStatus: text('.pt-status-main-status'),
     trackingId: text('.pt-delivery-card-trackingId'),
     carrierInfo: text('#carrierRelatedInfo-container'),
+    // Amazon's own class name for the address block. Language independent,
+    // and the only place the recipient's town appears on the tracker.
+    address: text('[class*="ddress"]'),
     canReschedule: !!document.querySelector('[class*="RESCHEDULE_DELIVERY"]'),
     milestones,
     cardText: all('.pt-card').join('\\n'),
@@ -93,6 +97,14 @@ def _status_from_milestones(milestones: list[dict]) -> str:
     # Unexpected bar shape: fall back to reading the label after all.
     LOGGER.debug("Progress bar has %d steps, expected %d", len(milestones), len(STATUS_BY_MILESTONE))
     return status_from_label(milestones[current].get("label", "")) or STATUS_UNKNOWN
+
+
+def _one_line(value: object) -> str:
+    """Flatten the address block into something a sensor state can hold."""
+    if not isinstance(value, str):
+        return ""
+    parts = [line.strip() for line in value.splitlines() if line.strip()]
+    return ", ".join(parts)
 
 
 def extract_with_css(page: Page, today: date) -> ShipmentFacts:
@@ -136,6 +148,7 @@ def extract_with_css(page: Page, today: date) -> ShipmentFacts:
         promise_text=promise,
         carrier=carrier,
         tracking_code=tracking_code,
+        delivery_address=_one_line(raw.get("address")),
         source=SOURCE_CSS if status != STATUS_UNKNOWN else SOURCE_NONE,
         confidence="high" if status != STATUS_UNKNOWN else "low",
         css_fields={
@@ -349,7 +362,11 @@ def extract(page: Page, text: str, config: Config, today: date) -> ShipmentFacts
 def _log_partial(facts: ShipmentFacts) -> None:
     missing = [name for name in TRACKED_FIELDS if not facts.css_fields.get(name)]
     if missing:
-        LOGGER.info("CSS extraction incomplete, missing: %s", ", ".join(missing))
+        # Before dispatch there is no tracking code and no carrier yet, so that
+        # is expected rather than a sign the selectors slipped.
+        expected = facts.status == STATUS_ORDERED and set(missing) <= {"tracking_code", "carrier"}
+        log = LOGGER.debug if expected else LOGGER.info
+        log("CSS extraction incomplete, missing: %s", ", ".join(missing))
     if facts.status == STATUS_OUT_FOR_DELIVERY and facts.stops_remaining is None:
         LOGGER.debug("Out for delivery but no stop count on the page")
     if facts.status == STATUS_DELIVERED:

@@ -105,19 +105,21 @@ class TestConfig(unittest.TestCase):
         config = Config.load(Path("/nonexistent/options.json"))
         self.assertEqual(config.amazon_domain, "amazon.de")
 
-    def test_overview_url_asks_for_open_orders_only(self):
+    def test_overview_reads_the_plain_order_list(self):
+        # Not ?orderFilter=open: that is Amazon's "Not Yet Dispatched" tab and
+        # hides exactly the packages that are already on their way.
         self.assertEqual(
-            Config().order_history_url,
-            "https://www.amazon.de/your-orders/orders?orderFilter=open",
+            Config().order_history_url, "https://www.amazon.de/gp/css/order-history"
         )
 
-    def test_full_history_url_is_the_unfiltered_one(self):
-        self.assertEqual(Config().full_history_url, "https://www.amazon.de/gp/css/order-history")
+    def test_overview_url_is_not_the_undispatched_filter(self):
+        self.assertNotIn("orderFilter=open", Config().order_history_url)
+        self.assertIn("orderFilter=open", Config().undispatched_url)
 
     def test_urls_follow_the_configured_domain(self):
         config = Config(amazon_domain="amazon.co.uk")
         self.assertTrue(config.order_history_url.startswith("https://www.amazon.co.uk/"))
-        self.assertTrue(config.full_history_url.startswith("https://www.amazon.co.uk/"))
+        self.assertTrue(config.undispatched_url.startswith("https://www.amazon.co.uk/"))
 
     def test_unknown_options_are_ignored(self):
         with tempfile.TemporaryDirectory() as tmp:

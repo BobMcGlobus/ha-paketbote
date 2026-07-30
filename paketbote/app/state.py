@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS shipments (
     order_id        TEXT NOT NULL,
     tracking_url    TEXT NOT NULL,
     title           TEXT,
+    recipient       TEXT,
+    delivery_address TEXT,
     carrier         TEXT,
     status          TEXT,
     stops_remaining INTEGER,
@@ -75,7 +77,20 @@ class Store:
         self._db = sqlite3.connect(str(self._path), isolation_level=None)
         self._db.row_factory = sqlite3.Row
         self._db.executescript(SCHEMA)
+        self._migrate()
         LOGGER.debug("State database at %s", self._path)
+
+    def _migrate(self) -> None:
+        """Add columns that later versions introduced.
+
+        CREATE TABLE IF NOT EXISTS leaves an existing table untouched, so a
+        database written by an older build needs the new columns added.
+        """
+        existing = {row["name"] for row in self._db.execute("PRAGMA table_info(shipments)")}
+        for column in ("recipient", "delivery_address"):
+            if column not in existing:
+                self._db.execute(f"ALTER TABLE shipments ADD COLUMN {column} TEXT")
+                LOGGER.info("Added column %s to the shipments table", column)
 
     def close(self) -> None:
         self._db.close()
@@ -85,15 +100,18 @@ class Store:
     def save(self, shipment: Shipment) -> None:
         self._db.execute(
             """
-            INSERT INTO shipments (shipment_id, order_id, tracking_url, title, carrier,
+            INSERT INTO shipments (shipment_id, order_id, tracking_url, title, recipient,
+                                   delivery_address, carrier,
                                    status, stops_remaining, window_start, window_end,
                                    expected_date, state, first_seen, last_seen)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,COALESCE(
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(
                 (SELECT first_seen FROM shipments WHERE shipment_id = ?), ?), ?)
             ON CONFLICT(shipment_id) DO UPDATE SET
                 order_id=excluded.order_id,
                 tracking_url=excluded.tracking_url,
                 title=excluded.title,
+                recipient=excluded.recipient,
+                delivery_address=excluded.delivery_address,
                 carrier=excluded.carrier,
                 status=excluded.status,
                 stops_remaining=excluded.stops_remaining,
@@ -108,6 +126,8 @@ class Store:
                 shipment.order_id,
                 shipment.tracking_url,
                 shipment.title,
+                shipment.recipient,
+                shipment.delivery_address,
                 shipment.carrier,
                 shipment.status,
                 shipment.stops_remaining,
@@ -135,6 +155,8 @@ class Store:
             order_id=row["order_id"],
             tracking_url=row["tracking_url"],
             title=row["title"] or "",
+            recipient=row["recipient"] or "",
+            delivery_address=row["delivery_address"] or "",
             carrier=row["carrier"],
             status=row["status"] or STATUS_UNKNOWN,
             stops_remaining=row["stops_remaining"],

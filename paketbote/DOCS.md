@@ -52,7 +52,12 @@ Im Panel sitzt ein voll funktionsfähiger, eingeloggter Browser.
 | `binary_sensor.paketbote_selektoren_defekt` | CSS-Selektoren tragen nicht mehr |
 
 **Pro Sendung** — dynamisch, verschwinden nach Zustellung: je ein Gerät mit
-Status, Stopps, Fenster ab, Erwartet, Titel und Zusteller.
+Status, Stopps, Fenster ab, Erwartet, Titel, Zusteller, **Empfänger** und
+**Lieferadresse**.
+
+Empfänger und Adresse gibt es, weil ein Amazon-Konto einen ganzen Haushalt
+bedienen kann. Automationen lassen sich damit auf die eigenen Pakete
+einschränken — über den Empfängernamen oder den Ort in der Adresse.
 
 Die Aggregate werden vom Add-on berechnet, nicht in HA nachgebaut. Ein
 Template-Sensor über eine wechselnde Entity-Liste bricht bei jeder neuen
@@ -87,9 +92,12 @@ MQTT-Zugangsdaten kommen über die Supervisor-Services-API und stehen bewusst
 
 Der Abruf läuft zweistufig:
 
-1. **Bestellübersicht** — ein Seitenaufruf auf `?orderFilter=open`, also nur
-   offene Bestellungen. Verschwindet eine Sendung aus dieser Liste, ist sie
-   angekommen und wird aus HA entfernt.
+1. **Bestellübersicht** — ein Seitenaufruf auf die normale Bestellliste.
+   Meldet sie eine Sendung als zugestellt, wird das einmal veröffentlicht und
+   das Gerät danach aus HA entfernt.
+
+   *Nicht* `?orderFilter=open`: das ist Amazons Reiter „Nicht versendet“ und
+   blendet ausgerechnet die Pakete aus, die schon unterwegs sind.
 2. **Progress-Tracker** — ein Aufruf *je Sendung*, teuer. Wird nur für
    Sendungen geöffnet, die die Übersicht nicht als zugestellt meldet.
 
@@ -158,7 +166,7 @@ docker exec addon_local_paketbote paketbote --dump
 | `paketbote --dump` | Übersicht + Rohtext aller aktiven Sendungen |
 | `paketbote --orders-only` | Nur die Sendungsliste, öffnet keine Tracker-Seiten |
 | `paketbote --dump --include-delivered` | Auch die als zugestellt gemeldeten |
-| `paketbote --dump --full-history` | Komplette Bestellhistorie statt nur offene |
+| `paketbote --dump --undispatched-only` | Amazons Reiter „Nicht versendet“ statt der Bestellliste |
 | `paketbote --dump --html --out DIR` | Zusätzlich das DOM, für CSS-Selektoren |
 
 Exit-Codes: `0` ok, `2` Amazon verlangt Login/MFA/Captcha, `3` Chrome nicht

@@ -2,11 +2,14 @@
 # ==============================================================================
 # Give KasmVNC a credential it accepts, and hand the same one to nginx.
 #
-# The packaged build does not honour -DisableBasicAuth, which turned the panel
-# into a bare 401. Rather than depend on that flag — or on a new command line
-# parameter, which would risk the server refusing to start at all — write the
-# password to the file KasmVNC reads by default and let nginx present it on
-# every proxied request.
+# The packaged build does not honour -DisableBasicAuth, so the panel answered
+# 401. Rather than depend on that flag — or add a command line parameter, which
+# would risk the server refusing to start at all — write the password to the
+# file KasmVNC reads by default and let nginx present it on every request.
+#
+# The default path is ${HOME}/.kasmpasswd. If HOME is unset in the service's
+# environment that expands to /.kasmpasswd, so HOME is pinned here and the file
+# is written to both candidates.
 #
 # This guards nothing: the port never leaves loopback and Home Assistant's
 # ingress is the real gate. The credential is regenerated on every start, is
@@ -14,24 +17,34 @@
 # ==============================================================================
 declare password b64
 declare -r user="paketbote"
-declare -r home="${HOME:-/root}"
 declare -r snippet="/etc/nginx/conf.d/kasm-auth.conf"
+declare -a targets=("/root/.kasmpasswd" "/.kasmpasswd")
 
-mkdir -p /etc/nginx/conf.d "${home}"
+mkdir -p /etc/nginx/conf.d /root
+
+# Pin HOME so KasmVNC and this script agree on where the file lives.
+printf '%s' "/root" > /run/s6/container_environment/HOME
+export HOME=/root
 
 # nginx refuses to start on a missing include, so the file must always exist.
 : > "${snippet}"
 
 password="$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)"
 
-if printf '%s\n%s\n' "${password}" "${password}" \
-        | kasmvncpasswd -u "${user}" -w -o "${home}/.kasmpasswd" > /dev/null 2>&1; then
-    chmod 600 "${home}/.kasmpasswd"
+declare -i written=0
+for target in "${targets[@]}"; do
+    if printf '%s\n%s\n' "${password}" "${password}" \
+            | kasmvncpasswd -u "${user}" -w -o "${target}" > /dev/null 2>&1; then
+        chmod 600 "${target}"
+        written+=1
+    fi
+done
+
+if [[ "${written}" -gt 0 ]]; then
     b64="$(printf '%s' "${user}:${password}" | base64 | tr -d '\n')"
     printf 'proxy_set_header Authorization "Basic %s";\n' "${b64}" > "${snippet}"
     chmod 600 "${snippet}"
-    bashio::log.info "Prepared a KasmVNC credential for this run"
+    bashio::log.info "Prepared a KasmVNC credential (${written} password file(s))"
 else
-    bashio::log.warning \
-        "Could not write ${home}/.kasmpasswd; the panel may answer 401"
+    bashio::log.warning "Could not write any KasmVNC password file; the panel may answer 401"
 fi

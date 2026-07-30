@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.5.0
+
+- **Es wurden zu wenige Bestellungen gefunden.** `?orderFilter=open` ist
+  Amazons Reiter „Nicht versendet“, nicht „noch unterwegs“ — er blendet genau
+  die Pakete aus, die schon auf dem Weg sind. Die Übersicht liest wieder die
+  normale Bestellliste, die Vorauswahl über den Kartentext filtert
+- Als Folge: eine zugestellte Sendung verschwindet nicht mehr aus der Liste,
+  sondern wird als zugestellt gemeldet — die Aufräumlogik richtet sich danach
+- **Empfänger und Lieferadresse** je Sendung als eigene Entities. Ein
+  Amazon-Konto kann einen ganzen Haushalt an mehreren Adressen bedienen
+- Bestehende Zustandsdatenbanken werden beim Öffnen um die neuen Spalten
+  ergänzt
+- Version kommt aus dem Build statt aus einer zweiten Stelle im Code — Log und
+  Geräteinfo zeigten noch 0.2.0
+- Fehlende Tracking-ID vor dem Versand ist normal und wird nicht mehr als
+  unvollständige Extraktion gemeldet
+- Weiterer Anlauf gegen den 401: `HOME` wird festgenagelt und die Passwortdatei
+  an beiden Stellen abgelegt, an denen KasmVNC sie sucht. `log_level: debug`
+  macht KasmVNC gesprächiger, falls es weiter klemmt
+
 ## 0.4.1
 
 - **Panel antwortete nur mit 401.** Das ausgelieferte KasmVNC-Paket honoriert

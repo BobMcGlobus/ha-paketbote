@@ -137,8 +137,23 @@ _COLLECT_TRACKING_LINKS_JS = """
       node = node.parentElement;
     }
 
-    const cardText = card ? (card.innerText || '').slice(0, cardTextLimit) : '';
-    out.push({ href, title, cardText });
+    // Amazon's own card container when it exists. The climb above is only a
+    // fallback: it stops below the card header, where the recipient lives.
+    const orderCard = anchor.closest('.order-card') || card;
+
+    // "DISPATCH TO / Jonas Althoff" -- the last line is the name. One account
+    // can serve a household spread across several addresses.
+    let recipient = '';
+    if (orderCard) {
+      const el = orderCard.querySelector('.yohtmlc-recipient');
+      if (el) {
+        const lines = (el.innerText || '').split('\\n').map((l) => l.trim()).filter(Boolean);
+        recipient = lines.length ? lines[lines.length - 1] : '';
+      }
+    }
+
+    const cardText = orderCard ? (orderCard.innerText || '').slice(0, cardTextLimit) : '';
+    out.push({ href, title, cardText, recipient });
   }
   return out;
 }
@@ -242,9 +257,9 @@ class Scraper:
         self._config = config
         self._browser = browser
 
-    def read_overview(self, *, full_history: bool = False, keep_html: bool = False) -> OrderOverview:
+    def read_overview(self, *, undispatched_only: bool = False, keep_html: bool = False) -> OrderOverview:
         """The cheap tier: one page load, giving both raw text and shipments."""
-        url = self._config.full_history_url if full_history else self._config.order_history_url
+        url = self._config.undispatched_url if undispatched_only else self._config.order_history_url
         with self._browser.visit(url) as page:
             found = page.evaluate(
                 _COLLECT_TRACKING_LINKS_JS,
@@ -274,6 +289,7 @@ class Scraper:
                 order_id=order_id,
                 tracking_url=entry["href"],
                 title=shorten(entry.get("title", "")),
+                recipient=(entry.get("recipient") or "").strip(),
                 overview_text=normalise_text(entry.get("cardText", "")),
                 last_seen=datetime.now(),
             )
@@ -454,9 +470,9 @@ def main(argv: list[str] | None = None) -> int:
         help="also open shipments the overview reports as delivered",
     )
     parser.add_argument(
-        "--full-history",
+        "--undispatched-only",
         action="store_true",
-        help="start from the complete order history instead of open orders only",
+        help="read Amazon's 'Not Yet Dispatched' tab instead of the order list",
     )
     parser.add_argument(
         "--html",
@@ -483,7 +499,9 @@ def main(argv: list[str] | None = None) -> int:
         with AttachedBrowser(args.cdp_url) as browser:
             scraper = Scraper(config, browser)
             keep_html = args.html and args.out is not None
-            overview = scraper.read_overview(full_history=args.full_history, keep_html=keep_html)
+            overview = scraper.read_overview(
+                undispatched_only=args.undispatched_only, keep_html=keep_html
+            )
             _emit_overview(overview, args.out)
 
             if not overview.shipments:
