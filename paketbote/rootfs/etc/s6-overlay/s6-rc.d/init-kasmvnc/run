@@ -1,0 +1,37 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Give KasmVNC a credential it accepts, and hand the same one to nginx.
+#
+# The packaged build does not honour -DisableBasicAuth, which turned the panel
+# into a bare 401. Rather than depend on that flag — or on a new command line
+# parameter, which would risk the server refusing to start at all — write the
+# password to the file KasmVNC reads by default and let nginx present it on
+# every proxied request.
+#
+# This guards nothing: the port never leaves loopback and Home Assistant's
+# ingress is the real gate. The credential is regenerated on every start, is
+# never written to the config volume, and never reaches the log.
+# ==============================================================================
+declare password b64
+declare -r user="paketbote"
+declare -r home="${HOME:-/root}"
+declare -r snippet="/etc/nginx/conf.d/kasm-auth.conf"
+
+mkdir -p /etc/nginx/conf.d "${home}"
+
+# nginx refuses to start on a missing include, so the file must always exist.
+: > "${snippet}"
+
+password="$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)"
+
+if printf '%s\n%s\n' "${password}" "${password}" \
+        | kasmvncpasswd -u "${user}" -w -o "${home}/.kasmpasswd" > /dev/null 2>&1; then
+    chmod 600 "${home}/.kasmpasswd"
+    b64="$(printf '%s' "${user}:${password}" | base64 | tr -d '\n')"
+    printf 'proxy_set_header Authorization "Basic %s";\n' "${b64}" > "${snippet}"
+    chmod 600 "${snippet}"
+    bashio::log.info "Prepared a KasmVNC credential for this run"
+else
+    bashio::log.warning \
+        "Could not write ${home}/.kasmpasswd; the panel may answer 401"
+fi

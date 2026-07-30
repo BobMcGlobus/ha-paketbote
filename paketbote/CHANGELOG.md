@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.1
+
+- **Panel antwortete nur mit 401.** Das ausgelieferte KasmVNC-Paket honoriert
+  `-DisableBasicAuth` nicht. Statt auf das Flag zu bauen, bekommt KasmVNC jetzt
+  ein bei jedem Start neu erzeugtes Zufallspasswort in der Datei, die es
+  ohnehin von sich aus liest, und nginx schickt es bei jedem Request mit. Kein
+  zusätzlicher Kommandozeilenparameter — ein ungültiger hätte den X-Server gar
+  nicht mehr starten lassen
+- Die Zugangsdaten liegen nur in tmpfs und in `/etc` im Container, nie auf dem
+  Config-Volume und nie im Log. Abgesichert wird damit nichts: der Port bleibt
+  auf Loopback, die eigentliche Tür ist HA-Ingress
+
 ## 0.4.0
 
 Phasen 3 bis 5: aus gelesenen Seiten werden Entities.
