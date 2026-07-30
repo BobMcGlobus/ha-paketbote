@@ -48,4 +48,13 @@ xdotool windowmove "${window}" 0 0 2>/dev/null
 xdotool windowsize "${window}" 100% 100% 2>/dev/null
 xdotool windowactivate "${window}" 2>/dev/null
 
+# Report what the window actually is afterwards. A window that is mapped and
+# full-screen but shows nothing is a painting problem, not a placement one,
+# and those two need opposite fixes.
+xwininfo -id "${window}" -display "${DISPLAY}" 2>/dev/null \
+    | grep -E 'Absolute upper-left|Width|Height|Map State|xwininfo: Window id' \
+    | while read -r line; do
+        [[ -n "${line}" ]] && bashio::log.info "  ${line}"
+    done
+
 exit 0

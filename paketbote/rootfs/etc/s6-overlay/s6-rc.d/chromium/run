@@ -47,9 +47,14 @@ flags=(
     "--no-sandbox"
     # Docker gives /dev/shm 64 MB, which is not enough for a real browser.
     "--disable-dev-shm-usage"
-    # Without a GPU, Chrome blocklists WebGL entirely and says so on every
-    # page load. Software rendering keeps WebGL working, which is both quieter
-    # and less unusual to a site that fingerprints the canvas.
+    # KasmVNC's X server offers no DRI, and Chrome's GPU process dies on it
+    # during initialisation ("Exiting GPU process due to errors"). That process
+    # is the display compositor: without it the window is mapped and correctly
+    # sized but never painted, which looks exactly like an empty desktop.
+    # Compositing in software avoids starting it at all.
+    "--disable-gpu"
+    # Keeps WebGL working through the software rasteriser, which is both
+    # quieter and less unusual to a site that fingerprints the canvas.
     "--enable-unsafe-swiftshader"
 )
 

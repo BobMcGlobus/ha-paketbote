@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.4
+
+Panel zeigte nur den Hintergrund, obwohl das Fenster nachweislich da war.
+
+- Die Diagnose aus 0.5.3 hat es entschieden: `Browser window 4194307 found;
+  sizing it to the display`. Das Fenster existiert, ist gemappt und
+  bildschirmfüllend — es malt nur nichts
+- Passend dazu eine Logzeile, die es mit Xvfb nie gab: *Exiting GPU process
+  due to errors during initialization*. Das ist Chromes viz-Prozess, der
+  Display-Compositor. Stirbt der, bleibt das Fenster leer
+- `--disable-gpu` dazu: KasmVNCs X-Server bietet kein DRI, also wird gar nicht
+  erst versucht, einen GPU-Prozess zu starten
+- `window-check` protokolliert jetzt zusätzlich Position, Größe und Map-State
+  des Fensters — ein leeres Vollbildfenster und ein falsch platziertes
+  brauchen gegensätzliche Korrekturen
+
 ## 0.5.3
 
 Das Add-on startete nicht mehr — mein Diagnose-Dienst aus 0.5.2 hat es
