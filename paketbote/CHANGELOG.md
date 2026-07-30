@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.3
+
+Das Add-on startete nicht mehr — mein Diagnose-Dienst aus 0.5.2 hat es
+umgebracht.
+
+- bashio führt Skripte unter `errexit` und `pipefail` aus, und ein
+  fehlschlagender s6-Oneshot **stoppt den ganzen Container**. `xdotool search`
+  ohne Treffer liefert Exit 1 und riss damit alles mit
+- `window-check` steigt jetzt explizit aus der Strictness aus und endet immer
+  mit 0. Eine Diagnose darf das Add-on nie beenden können
+- **Derselbe Fehler steckte längst in `dump_on_start`:** der Scraper wurde
+  ungeschützt aufgerufen. Hätte Amazon beim Start einen Login verlangt
+  (Exit 2), wäre der Container ebenfalls gestoppt worden. Beides gegen einen
+  nachgebauten Fehlschlag verifiziert
+- `init-kasmvnc` und `init-browser` an denselben Stellen gehärtet: die
+  Passwort-Pipeline konnte per SIGPIPE fehlschlagen, `dbus-uuidgen` und `sed`
+  waren ungeschützt
+- Doppelter `wasm`-MIME-Typ entfernt, den Debians `mime.types` schon kennt
+
 ## 0.5.2
 
 Panel zeigte nur den Desktop-Hintergrund, keinen Browser.

@@ -29,7 +29,10 @@ export HOME=/root
 # nginx refuses to start on a missing include, so the file must always exist.
 : > "${snippet}"
 
-password="$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)"
+# `head -c` closing the pipe early can SIGPIPE the stage before it, which
+# under bashio's pipefail would abort this script and stop the container.
+password="$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' || true)"
+password="${password:0:24}"
 
 declare -i written=0
 for target in "${targets[@]}"; do

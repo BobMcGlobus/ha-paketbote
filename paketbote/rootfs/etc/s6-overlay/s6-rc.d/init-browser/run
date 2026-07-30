@@ -21,9 +21,10 @@ bashio::log.level "${level}"
 # machine's identity stable across image rebuilds, not just restarts.
 if [[ ! -s /etc/machine-id ]]; then
     if [[ ! -s /config/machine-id ]]; then
-        dbus-uuidgen > /config/machine-id
+        dbus-uuidgen > /config/machine-id \
+            || bashio::log.warning "Could not generate a machine id"
     fi
-    cat /config/machine-id > /etc/machine-id
+    cat /config/machine-id > /etc/machine-id || true
 fi
 
 # KasmVNC and Chrome both want a runtime dir; without one they fall back to
@@ -47,7 +48,7 @@ if [[ -f "${profile}/Default/Preferences" ]]; then
     sed -i \
         -e 's/"exit_type":"[^"]*"/"exit_type":"Normal"/' \
         -e 's/"exited_cleanly":false/"exited_cleanly":true/' \
-        "${profile}/Default/Preferences"
+        "${profile}/Default/Preferences" || true
 fi
 
 bashio::log.info "Chrome profile ready at ${profile}"

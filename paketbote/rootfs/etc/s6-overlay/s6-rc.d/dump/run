@@ -27,13 +27,22 @@ if ! curl -sf http://127.0.0.1:9222/json/version > /dev/null 2>&1; then
 fi
 
 out="/config/dumps/$(date +%Y%m%d-%H%M%S)"
-mkdir -p "${out}"
+if ! mkdir -p "${out}"; then
+    bashio::log.error "dump_on_start: cannot write to ${out}"
+    exit 0
+fi
 bashio::log.info "dump_on_start: capturing to ${out}"
 
 # --html keeps the DOM alongside the text: CSS selectors cannot be written
 # against extracted text, only against real markup.
-paketbote --dump --html --out "${out}"
-status=$?
+#
+# Guarded on purpose: bashio runs this under errexit, and a failed oneshot
+# stops the whole container. A login wall during the dump exits non-zero, and
+# that must not take the add-on down with it.
+# `|| status=$?` keeps the real exit code and stops errexit from firing;
+# inside `if ! cmd` the status would already have been inverted to 0.
+status=0
+paketbote --dump --html --out "${out}" || status=$?
 
 case ${status} in
     0)
