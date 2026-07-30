@@ -26,6 +26,12 @@ if [[ ! -s /etc/machine-id ]]; then
     cat /config/machine-id > /etc/machine-id
 fi
 
+# KasmVNC and Chrome both want a runtime dir; without one they fall back to
+# noisy guesses.
+mkdir -p /tmp/xdg
+chmod 700 /tmp/xdg
+printf '%s' /tmp/xdg > /run/s6/container_environment/XDG_RUNTIME_DIR
+
 mkdir -p "${profile}"
 
 # A hard container stop leaves these behind, after which Chrome refuses to

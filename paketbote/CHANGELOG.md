@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0
+
+Fernzugriff neu gebaut. Am Scraper ändert sich nichts.
+
+- **Xvfb + x11vnc + websockify durch KasmVNC ersetzt.** Ein Prozess statt drei:
+  `Xkasmvnc` ist X-Server und Web-Client zugleich. Regionsbasierte Kompression
+  statt roher Framebuffer-Updates — spürbar flüssiger, besonders über Mobilfunk
+- Drei s6-Dienste weniger, kürzere Startkette
+- nginx entscheidet den Websocket-Upgrade jetzt pro Request statt an einer
+  fest verdrahteten Stelle
+- `XDG_RUNTIME_DIR` wird gesetzt, das nimmt Chrome und KasmVNC das Raten ab
+
+Chrome bleibt Chrome: Playwrights `connect_over_cdp` ist laut Doku
+Chromium-only, und ohne CDP-Anhängen an einen fremdgestarteten Browser fällt
+die persistente Session — der ganze Sinn der Übung.
+
 ## 0.2.3
 
 Aus den echten Seiten-Dumps: Amazon hat brauchbare semantische Container.

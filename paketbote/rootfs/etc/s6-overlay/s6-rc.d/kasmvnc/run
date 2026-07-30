@@ -1,0 +1,32 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# X server and web client in one process.
+#
+# Xkasmvnc replaces the old Xvfb + x11vnc + websockify chain: it is the X
+# server, and it serves its own browser client over the same port. Fewer moving
+# parts, and far better compression than raw VNC framebuffer updates -- which
+# is what makes it usable over mobile data.
+#
+# No authentication of any kind is configured on purpose: the port stays on
+# loopback and Home Assistant's ingress is what authenticates the user.
+# ==============================================================================
+declare -i width height
+
+width=$(bashio::config 'display_width')
+height=$(bashio::config 'display_height')
+
+bashio::log.info "Starting KasmVNC on ${DISPLAY} at ${width}x${height}..."
+
+exec Xkasmvnc "${DISPLAY}" \
+    -geometry "${width}x${height}" \
+    -depth 24 \
+    -httpd /usr/share/kasmvnc/www \
+    -interface 127.0.0.1 \
+    -websocketPort 6081 \
+    -PublicIP 127.0.0.1 \
+    -DisableBasicAuth \
+    -SecurityTypes None \
+    -AlwaysShared \
+    -sslOnly 0 \
+    -RectThreads 0 \
+    -Log "*:stdout:10"

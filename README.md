@@ -37,9 +37,9 @@ direkt im Panel erledigen — über HA-Ingress authentifiziert, auch aus der
 Companion App heraus. Kein VNC-Port, kein Reverse-Proxy-Eintrag, kein SSH.
 
 ```
-Xvfb :99  ──▶  Openbox  ──▶  Google Chrome (headful, CDP :9222)
-   │
-   └──▶  x11vnc :5900  ──▶  noVNC :6081  ──▶  nginx :6080  ──▶  Ingress
+KasmVNC :99  ──▶  Openbox  ──▶  Google Chrome (headful, CDP :9222)
+   │  (X-Server + Web-Client in einem Prozess)
+   └──▶  :6081  ──▶  nginx :6080  ──▶  Ingress
 ```
 
 Chrome läuft als eigener, langlebiger Prozess — nicht von Playwright gestartet.

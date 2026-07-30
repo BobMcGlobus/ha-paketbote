@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-exec /etc/s6-overlay/scripts/restart-backoff "novnc" "${1}" "${2}"

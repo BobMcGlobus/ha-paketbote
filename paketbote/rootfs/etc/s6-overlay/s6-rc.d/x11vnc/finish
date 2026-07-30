@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-exec /etc/s6-overlay/scripts/restart-backoff "x11vnc" "${1}" "${2}"

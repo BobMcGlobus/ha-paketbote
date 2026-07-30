@@ -110,9 +110,9 @@ ab statt zu crashen. Panel öffnen, Challenge erledigen, erneut laufen lassen.
 ## Wie das intern läuft
 
 ```
-Xvfb :99  ──▶  Openbox  ──▶  Google Chrome (headful, CDP :9222)
-   │
-   └──▶  x11vnc :5900  ──▶  websockify/noVNC :6081  ──▶  nginx :6080  ──▶  Ingress
+KasmVNC :99  ──▶  Openbox  ──▶  Google Chrome (headful, CDP :9222)
+   │  (X-Server + Web-Client in einem Prozess)
+   └──▶  :6081  ──▶  nginx :6080  ──▶  Ingress
 ```
 
 Alle Ports außer 6080 sind an `127.0.0.1` gebunden, und 6080 nimmt nur
@@ -136,12 +136,11 @@ Klartext.
 ## Fehlersuche
 
 **Panel bleibt grau oder schwarz**
-Xvfb oder Chrome sind noch nicht oben. Ein paar Sekunden warten, dann neu laden.
+KasmVNC oder Chrome sind noch nicht oben. Ein paar Sekunden warten, dann neu laden.
 Bleibt es dabei: Add-on-Log prüfen.
 
-**Panel zeigt „Failed to connect to server"**
-Die Websocket-Verbindung kam nicht durch. Log auf `x11vnc`- oder
-`novnc`-Fehler prüfen.
+**Panel verbindet sich nicht**
+Die Websocket-Verbindung kam nicht durch. Log auf `kasmvnc`-Fehler prüfen.
 
 **Chrome startet nicht, Log nennt ein gesperrtes Profil**
 Sollte nicht passieren — `init-browser` räumt `SingletonLock` bei jedem Start

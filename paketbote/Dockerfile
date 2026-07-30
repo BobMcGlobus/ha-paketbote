@@ -22,16 +22,24 @@ RUN set -eux; \
         fonts-noto-color-emoji \
         gnupg \
         nginx-light \
-        novnc \
         openbox \
         tzdata \
-        websockify \
         x11-utils \
-        x11vnc \
-        xvfb \
     ; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
+
+# KasmVNC is the X server *and* the web client in one process, replacing
+# Xvfb + x11vnc + websockify. Its region-based compression is what makes the
+# panel usable over mobile data; plain VNC framebuffer updates were not.
+ARG KASMVNC_VERSION=1.5.0
+RUN set -eux; \
+    curl -fsSL -o /tmp/kasmvnc.deb \
+        "https://github.com/kasmtech/KasmVNC/releases/download/v${KASMVNC_VERSION}/kasmvncserver_trixie_${KASMVNC_VERSION}_amd64.deb"; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends /tmp/kasmvnc.deb; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/* /tmp/kasmvnc.deb
 
 # Google Chrome rather than Debian's chromium: this browser talks to Amazon
 # while logged in, and a stock Chrome build is the least remarkable client
