@@ -17,6 +17,19 @@ STATE_IMMINENT = "IMMINENT"
 STATE_DELIVERED = "DELIVERED"
 
 STATUS_UNKNOWN = "unknown"
+STATUS_ORDERED = "ordered"
+STATUS_SHIPPED = "shipped"
+STATUS_OUT_FOR_DELIVERY = "out_for_delivery"
+STATUS_DELIVERED = "delivered"
+STATUS_EXCEPTION = "exception"
+
+KNOWN_STATUSES = (
+    STATUS_ORDERED,
+    STATUS_SHIPPED,
+    STATUS_OUT_FOR_DELIVERY,
+    STATUS_DELIVERED,
+    STATUS_EXCEPTION,
+)
 
 
 def shorten(title: str, limit: int = TITLE_MAX_LENGTH) -> str:
@@ -52,6 +65,33 @@ class Shipment:
     expected_date: date | None = None
     state: str = STATE_IDLE
     last_seen: datetime | None = None
+
+
+@dataclass
+class ShipmentFacts:
+    """What one tracker page says, after interpretation.
+
+    `source` records how it was read — CSS selectors, the LLM fallback, or not
+    at all. `css_fields` records per field whether the selectors delivered, and
+    is what feeds the selector-health sensor.
+    """
+
+    status: str = STATUS_UNKNOWN
+    stops_remaining: int | None = None
+    window_start: time | None = None
+    window_end: time | None = None
+    expected_date: date | None = None
+    promise_text: str = ""
+    carrier: str | None = None
+    tracking_code: str | None = None
+    source: str = "none"
+    confidence: str = "low"
+    css_fields: dict[str, bool] = field(default_factory=dict)
+
+    @property
+    def is_usable(self) -> bool:
+        """Anything without a status is not worth overwriting known state with."""
+        return self.status != STATUS_UNKNOWN and self.confidence != "low"
 
 
 @dataclass

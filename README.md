@@ -56,21 +56,21 @@ Das Projekt wird in Phasen gebaut; jede endet mit einem lauffähigen Zustand.
 | 0 | Vorbedingungen (HA OS, amd64, Supervisor) | ✅ |
 | 1 | Add-on-Skelett + bedienbarer Browser | ✅ |
 | 2 | Scraper-Kern (Playwright über CDP) | ✅ |
-| 3 | LLM-Extraktion der Tracking-Seiten | offen |
-| 4 | Scheduler / Polling-Zustandsmaschine | offen |
-| 5 | MQTT Discovery | offen |
-| 6 | Härtung (WAF-Erkennung, Backoff, Request-Cap) | offen |
+| 3 | Extraktion: CSS zuerst, LLM als Fallback | ✅ |
+| 4 | Scheduler / Polling-Zustandsmaschine | ✅ |
+| 5 | MQTT Discovery | ✅ |
+| 6 | Härtung (Backoff, Request-Cap, Gesundheitssensor) | teilweise |
 | 7 | DHL über die offizielle API | offen |
 
-**Aktuell nutzbar:** der Browser im Panel und `paketbote --dump`, das die
-Tracking-Seiten als Rohtext ausgibt. Entities gibt es ab Phase 5.
+**Aktuell nutzbar:** Entities in Home Assistant. Der Browser im Panel bleibt
+für Login, MFA und Captcha zuständig.
 
 ## Voraussetzungen
 
 - Home Assistant OS oder Supervised (ein reiner Docker-Container kann keine
   Add-ons installieren)
 - amd64
-- MQTT-Broker in HA (ab Phase 5)
+- MQTT-Broker in HA — das Mosquitto-Add-on genügt
 
 ## Hinweis
 

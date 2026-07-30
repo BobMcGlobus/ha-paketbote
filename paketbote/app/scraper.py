@@ -305,11 +305,17 @@ class Scraper:
         LOGGER.info("%d of %d shipment(s) still active", len(active), len(shipments))
         return active
 
-    def capture(self, shipment: Shipment, *, keep_html: bool = False) -> TrackingPage:
-        """Open one tracker page and take its text."""
+    def capture_with(self, shipment, reader=None, *, keep_html: bool = False):
+        """Open one tracker page and take its text.
+
+        `reader(page, text)` runs while the page is still open, which is what
+        lets the CSS extractor see the live DOM instead of only the text.
+        Returns the capture and whatever the reader produced.
+        """
         with self._browser.visit(shipment.tracking_url) as page:
             text, selector = extract_text(page)
-            return TrackingPage(
+            interpreted = reader(page, text) if reader is not None else None
+            capture = TrackingPage(
                 shipment=shipment,
                 url=page.url,
                 page_title=page.title(),
@@ -317,6 +323,11 @@ class Scraper:
                 html=page.content() if keep_html else "",
                 content_selector=selector,
             )
+        return capture, interpreted
+
+    def capture(self, shipment: Shipment, *, keep_html: bool = False) -> TrackingPage:
+        """Open one tracker page and take its text."""
+        return self.capture_with(shipment, keep_html=keep_html)[0]
 
     def capture_all(
         self,

@@ -1,0 +1,23 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# The polling loop: reads Amazon over CDP and publishes to MQTT.
+#
+# A second service on purpose. Chrome owns its own lifetime, so this can crash,
+# restart or be updated without costing the Amazon session.
+# ==============================================================================
+bashio::log.info "Waiting for Chrome's debugging port..."
+for _ in $(seq 1 60); do
+    if curl -sf http://127.0.0.1:9222/json/version > /dev/null 2>&1; then
+        break
+    fi
+    sleep 2
+done
+
+if ! bashio::services.available "mqtt"; then
+    bashio::log.warning "No MQTT service is available yet; starting anyway and letting the app report it"
+fi
+
+bashio::log.info "Starting the Paketbote scheduler..."
+
+export PYTHONPATH=/opt/paketbote
+exec /opt/venv/bin/python -m app.main

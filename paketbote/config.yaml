@@ -1,6 +1,6 @@
 ---
 name: Paketbote
-version: "0.3.0"
+version: "0.4.0"
 slug: paketbote
 description: Amazon-Lieferverfolgung via persistentem Browser
 url: https://github.com/BobMcGlobus/ha-paketbote
@@ -49,6 +49,7 @@ options:
   quiet_hours_start: 22
   quiet_hours_end: 6
   dump_on_start: false
+  developer_mode: false
   log_level: info
 
 schema:
@@ -70,4 +71,5 @@ schema:
   quiet_hours_start: int(0,23)
   quiet_hours_end: int(0,23)
   dump_on_start: bool
+  developer_mode: bool
   log_level: list(trace|debug|info|warning|error)

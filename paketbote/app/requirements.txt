@@ -2,3 +2,5 @@
 # run: the scraper attaches over CDP to the Chrome that already runs in this
 # image, so the bundled browser downloads would be ~500 MB of dead weight.
 playwright==1.61.0
+paho-mqtt==2.1.0
+requests==2.34.2

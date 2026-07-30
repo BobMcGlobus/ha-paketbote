@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0
+
+Phasen 3 bis 5: aus gelesenen Seiten werden Entities.
+
+- **Extraktion: CSS zuerst, LLM nur als Fallback.** Die Fortschrittsleiste
+  trägt `data-`Attribute, der aktuelle Schritt wird also an seiner Position
+  erkannt statt am Wort — damit ist die Kontosprache egal. Gegen die echten
+  Seiten verifiziert: Status, Zustelldatum, Tracking-ID und Zusteller stimmen
+- **Der LLM-Key ist optional.** Ohne Key läuft alles weiter, es wird nur
+  geloggt, dass die Selektoren nicht mehr tragen
+- **Zustandsmaschine** vollständig, inklusive der Stopp-Stufen. Ohne Stopp-Zahl
+  endet die Leiter bei `WINDOW`; die Stufen schalten sich frei, sobald Amazon
+  eine liefert. Zustand wird neu berechnet, nie fortgeschrieben —
+  Rückwärtsübergänge funktionieren
+- Nachtruhe, Jitter, Request-Cap mit Tagesreset, exponentielles Backoff bei
+  Login-Wänden
+- **MQTT Discovery** mit 12 Aggregat-Entities und einem Gerät je Sendung.
+  Aggregate werden vom Add-on berechnet, nicht in HA nachgebaut
+- Zustandsdatenbank in `/config/state.db`, überlebt Neustarts
+- `developer_mode`: Trefferquote je Feld als Attribute, plus Dump jeder Seite,
+  die die Selektoren nicht lesen konnten
+- Eine Sendung, die aus den offenen Bestellungen verschwindet, gilt als
+  zugestellt und wird aus HA entfernt
+- Lücke geschlossen, die die Simulation zeigte: ohne Zustellfenster griff die
+  Abbruchregel des Plans nie, und eine bei „1 Stopp" hängende Sendung hätte bis
+  zur Nachtruhe im Minutentakt gepollt
+
 ## 0.3.0
 
 Fernzugriff neu gebaut. Am Scraper ändert sich nichts.
