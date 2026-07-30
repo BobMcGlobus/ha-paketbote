@@ -14,8 +14,9 @@ LLM-Extraktion und MQTT folgen in den Phasen 2–5.
 
 ## Installation
 
-1. Repository in Home Assistant hinzufügen:
-   **Einstellungen → Add-ons → Add-on Store → ⋮ → Repositories**
+1. Repository in Home Assistant hinzufügen —
+   **Einstellungen → Add-ons → Add-on Store → ⋮ → Repositories**:
+   `https://github.com/BobMcGlobus/ha-paketbote`
 2. `Paketbote` installieren und starten.
 3. Das Panel erscheint als **Paketbote** in der Sidebar.
 

@@ -3,7 +3,7 @@ name: Paketbote
 version: "0.1.0"
 slug: paketbote
 description: Amazon-Lieferverfolgung via persistentem Browser
-url: https://github.com/BobMcGlobus/hassio-addon-paketbote
+url: https://github.com/BobMcGlobus/ha-paketbote
 arch:
   - amd64
 init: false

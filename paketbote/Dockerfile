@@ -65,7 +65,7 @@ LABEL \
     io.hass.arch="${BUILD_ARCH}" \
     io.hass.type="addon" \
     io.hass.version=${BUILD_VERSION} \
-    maintainer="BobMcGlobus <jonas.althoff@mcglobus.de>" \
+    maintainer="Bob McGlobus <42802973+BobMcGlobus@users.noreply.github.com>" \
     org.opencontainers.image.title="${BUILD_NAME}" \
     org.opencontainers.image.description="${BUILD_DESCRIPTION}" \
     org.opencontainers.image.source="https://github.com/${BUILD_REPOSITORY}" \
