@@ -36,13 +36,16 @@ rm -f \
     "${profile}/SingletonSocket" \
     "${profile}/SingletonCookie"
 
-# Suppress the "Chrome didn't shut down correctly / Restore pages?" bubble,
-# which would otherwise cover the page after every add-on restart.
+# Chrome restores its saved window geometry over --window-position and
+# --window-size, so a placement saved while the screen was a different size
+# would keep putting the browser somewhere invisible. See the script.
 if [[ -f "${profile}/Default/Preferences" ]]; then
-    sed -i \
-        -e 's/"exit_type":"[^"]*"/"exit_type":"Normal"/' \
-        -e 's/"exited_cleanly":false/"exited_cleanly":true/' \
-        "${profile}/Default/Preferences" || true
+    python3 /usr/lib/paketbote/normalise-prefs.py "${profile}/Default/Preferences" \
+        || bashio::log.warning "Could not normalise the Chrome preferences"
 fi
+
+# Session files remember window bounds too, and a stale one would put the
+# geometry straight back.
+rm -rf "${profile}/Default/Sessions" || true
 
 bashio::log.info "Chrome profile ready at ${profile}"

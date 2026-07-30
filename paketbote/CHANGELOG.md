@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.2
+
+- **Gespeicherte Fensterposition wird beim Start verworfen.** Chrome merkt sich
+  seine Fenstergeometrie im Profil und stellt sie wieder her — das sticht
+  `--window-position` und `--window-size`. Eine Position, die bei anderer
+  Bildschirmgröße gespeichert wurde, bringt den Browser damit für immer
+  außerhalb des Sichtbaren hoch. Das erklärt, warum der Rückbau auf die alten
+  Flags nichts geändert hat: der Unterschied lag nicht in der Konfiguration,
+  sondern im Profil auf dem Config-Volume
+- `Default/Sessions` wird ebenfalls geräumt, dort stehen Fenstergrenzen auch
+- Die Preferences werden jetzt als JSON bearbeitet statt per `sed`
+- `window-check` unterscheidet „kein Fenster" von „Fenster existiert, ist aber
+  nicht sichtbar" und protokolliert im zweiten Fall Map-State und Größe
+
 ## 0.6.1
 
 Chromes Umgebung exakt zurück auf den Stand, in dem das Browserfenster zuletzt

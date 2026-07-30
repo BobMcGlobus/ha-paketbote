@@ -32,6 +32,22 @@ dimensions="$(xdpyinfo -display "${DISPLAY}" 2>/dev/null | awk '/dimensions:/ {p
 bashio::log.info "Screen is ${dimensions:-unknown}"
 
 if [[ -z "${window}" ]]; then
+    # A window that exists but is not visible and one that was never created
+    # are different faults, so say which it is.
+    declare hidden=""
+    hidden="$(xdotool search --class chrome 2>/dev/null | tr '\n' ' ')"
+    if [[ -n "${hidden}" ]]; then
+        bashio::log.warning "Chrome has windows (${hidden}) but none of them is visible."
+        for candidate in ${hidden}; do
+            xwininfo -id "${candidate}" -display "${DISPLAY}" 2>/dev/null \
+                | grep -E 'Map State|Width|Height|Absolute upper-left' \
+                | while read -r detail; do
+                    bashio::log.warning "  ${candidate}: ${detail}"
+                done
+        done
+        exit 0
+    fi
+
     bashio::log.warning "No browser window appeared on ${DISPLAY} after 60s."
     bashio::log.warning "Windows currently mapped:"
     xwininfo -root -children -display "${DISPLAY}" 2>/dev/null \
