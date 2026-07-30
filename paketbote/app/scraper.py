@@ -50,6 +50,9 @@ CONTENT_SELECTORS = PRIMARY_CONTENT_SELECTORS + FALLBACK_CONTENT_SELECTORS
 _TEXTS_JS = "els => els.map((e) => (e.innerText || '').trim()).filter(Boolean)"
 
 RAW_TEXT_LIMIT = 20_000
+
+# How long to give a page that looks unrendered before calling it broken.
+CONTENT_RETRY_WAIT_MS = 2_500
 CARD_TEXT_LIMIT = 2_000
 ORDER_ID_RE = re.compile(r"\b[A-Z0-9]{3}-\d{7}-\d{7}\b")
 
@@ -217,12 +220,49 @@ def normalise_text(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 
 
-def extract_text(page: Page) -> tuple[str, str]:
+def extract_text(page: Page, *, allow_retry: bool = True) -> tuple[str, str]:
     """Visible text of the most specific container that has content.
 
     Returns the text and the selector it came from. That selector is the health
     signal: falling through to a generic container means Amazon's markup moved.
+
+    A page that simply had not finished rendering looks identical to one whose
+    markup changed, so a generic match is retried once after a pause. Without
+    that, every slow page raises the broken-selector alarm and the alarm stops
+    meaning anything.
     """
+    text, selector = _read_content(page)
+
+    if selector in FALLBACK_CONTENT_SELECTORS and allow_retry:
+        LOGGER.debug("Only %r matched; waiting %dms in case the page is still rendering",
+                     selector, CONTENT_RETRY_WAIT_MS)
+        try:
+            page.wait_for_timeout(CONTENT_RETRY_WAIT_MS)
+        except (PlaywrightError, PlaywrightTimeout):
+            pass
+        retry_text, retry_selector = _read_content(page)
+        if retry_selector in PRIMARY_CONTENT_SELECTORS:
+            LOGGER.debug("Retry found %r after all", retry_selector)
+            return retry_text[:RAW_TEXT_LIMIT], retry_selector
+        text, selector = retry_text, retry_selector
+
+    if not selector:
+        return "", ""
+
+    if selector in FALLBACK_CONTENT_SELECTORS:
+        LOGGER.warning(
+            "No Amazon content container matched on %s; fell back to %r. "
+            "The markup has probably changed.",
+            page.url,
+            selector,
+        )
+    else:
+        LOGGER.debug("Read %d characters from %r", len(text), selector)
+    return text[:RAW_TEXT_LIMIT], selector
+
+
+def _read_content(page: Page) -> tuple[str, str]:
+    """One pass over the candidate containers, most specific first."""
     for selector in CONTENT_SELECTORS:
         try:
             texts = page.eval_on_selector_all(selector, _TEXTS_JS)
@@ -236,16 +276,7 @@ def extract_text(page: Page) -> tuple[str, str]:
         if not text:
             continue
 
-        if selector in FALLBACK_CONTENT_SELECTORS:
-            LOGGER.warning(
-                "No Amazon content container matched on %s; fell back to %r. "
-                "The markup has probably changed.",
-                page.url,
-                selector,
-            )
-        else:
-            LOGGER.debug("Read %d characters from %r", len(text), selector)
-        return text[:RAW_TEXT_LIMIT], selector
+        return text, selector
 
     return "", ""
 

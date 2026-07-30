@@ -1,0 +1,24 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Exports the virtual display over VNC, bound to loopback only.
+# ==============================================================================
+bashio::log.debug "Waiting for X display ${DISPLAY}..."
+until xdpyinfo -display "${DISPLAY}" > /dev/null 2>&1; do
+    sleep 0.5
+done
+
+bashio::log.info "Starting x11vnc on 127.0.0.1:5900..."
+
+# No VNC password on purpose: the port never leaves loopback, and Home
+# Assistant's ingress is what actually authenticates the user.
+exec x11vnc \
+    -display "${DISPLAY}" \
+    -rfbport 5900 \
+    -localhost \
+    -nopw \
+    -forever \
+    -shared \
+    -repeat \
+    -xkb \
+    -noxdamage \
+    -quiet

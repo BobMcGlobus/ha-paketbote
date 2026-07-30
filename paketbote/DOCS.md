@@ -175,11 +175,11 @@ erreichbar.
 ## Wie das intern läuft
 
 ```
-KasmVNC :99  ──▶  Openbox  ──▶  Google Chrome (headful, CDP :9222)
-   │  (X-Server + Web-Client in einem Prozess)      ▲
-   └──▶  :6081  ──▶  nginx :6080  ──▶  Ingress      │
-                                                    │
-                          Scheduler ────────────────┘  ──▶  MQTT
+Xvfb :99  ──▶  Openbox  ──▶  Google Chrome (headful, CDP :9222)
+   │                                   ▲
+   └──▶  x11vnc :5900  ──▶  noVNC :6081  ──▶  nginx :6080  ──▶  Ingress
+                                       │
+                     Scheduler ────────┘  ──▶  MQTT
 ```
 
 Alle Ports außer 6080 sind an `127.0.0.1` gebunden, und 6080 nimmt nur
@@ -201,12 +201,12 @@ Device-Trust-Cookies und gehört **nicht** in einen Klartext-Backup-Sync.
 ## Fehlersuche
 
 **Panel bleibt grau oder schwarz**
-KasmVNC oder Chrome sind noch nicht oben. Ein paar Sekunden warten, dann neu
+Xvfb oder Chrome sind noch nicht oben. Ein paar Sekunden warten, dann neu
 laden. Bleibt es dabei: Add-on-Log prüfen.
 
 **Panel verbindet sich nicht**
-nginx liefert den Web-Client selbst vom Dateisystem aus; nur `/websockify` geht
-an KasmVNC. Bleibt die Verbindung aus, im Log nach `kasmvnc` suchen.
+Die Websocket-Verbindung kam nicht durch. Im Log nach `x11vnc`- oder
+`novnc`-Fehlern suchen.
 
 **Keine Entities in HA**
 Log auf `No MQTT broker` prüfen. Mosquitto-Add-on installieren, MQTT-Integration

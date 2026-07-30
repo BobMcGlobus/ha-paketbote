@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0
+
+- **Zurück auf Xvfb + x11vnc + noVNC.** KasmVNC lieferte ein Panel, in dem das
+  Browserfenster nachweislich existiert, gemappt und bildschirmfüllend ist —
+  aber nichts malt. Vier Ansätze, vier Fehlschläge; der bewährte Stack aus
+  v0.2.x kommt zurück, damit das Panel wieder tut, was es soll
+- **Fehlalarm beim Selektoren-Sensor behoben.** Eine Seite, die noch nicht
+  fertig gerendert war, sah aus wie eine mit geändertem Markup und löste
+  „Selektoren defekt" aus. Es wird jetzt einmal nachgefasst, bevor Alarm
+  geschlagen wird — sonst meldet der Sensor bei jeder langsamen Seite und
+  bedeutet damit nichts mehr
+- `--disable-gpu` bleibt: spart den GPU-Prozess und damit Lograuschen
+
 ## 0.5.4
 
 Panel zeigte nur den Hintergrund, obwohl das Fenster nachweislich da war.
