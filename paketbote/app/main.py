@@ -31,6 +31,7 @@ from .models import (
     ShipmentFacts,
 )
 from .mqtt import Publisher
+from .people import normalise_name
 from .scheduler import next_interval_minutes, state_for, summarise
 from .scraper import Scraper
 from .state import Store
@@ -50,6 +51,9 @@ KEEP_DELIVERED_DAYS = 3
 
 # When archived parcels are finally dropped.
 ARCHIVE_DAYS = 90
+
+# Each extra guess costs a carrier request, so keep it to a household's worth.
+MAX_POSTCODE_ATTEMPTS = 3
 
 DUMP_DIR = Path("/config/dumps")
 
@@ -191,6 +195,7 @@ class Paketbote:
                 shipment.state = state_for(shipment, now, config)
                 shipment.last_seen = now
 
+                self._store.learn_recipient(shipment.recipient, shipment.delivery_address)
                 self._store.save(shipment)
                 self._publisher.announce_shipment(shipment)
                 self._publisher.publish_shipment(shipment)
@@ -280,6 +285,22 @@ class Paketbote:
             self._dump_failure(capture)
         return facts
 
+    def _postcode_candidates(self, shipment: Shipment) -> list[str]:
+        """Postcodes worth trying for this parcel, best guess first.
+
+        One recipient can live at more than one address and one address can
+        serve several people, so the parcel's own page is only the first guess.
+        Capped, because each attempt costs a DHL call.
+        """
+        candidates: list[str] = []
+        own = _postal_code(shipment)
+        if own:
+            candidates.append(own)
+        for postcode in self._store.postcodes_for(shipment.recipient):
+            if postcode not in candidates:
+                candidates.append(postcode)
+        return (candidates or [""])[:MAX_POSTCODE_ATTEMPTS]
+
     def _dump_failure(self, capture) -> None:
         """Developer mode: keep the page that the selectors could not read."""
         try:
@@ -336,16 +357,29 @@ class Paketbote:
         if not dhl_carrier.handles(shipment.carrier):
             return
 
-        try:
-            update = self._dhl.fetch(shipment.tracking_code, _postal_code(shipment))
-        except NotFound:
-            LOGGER.debug("DHL does not know %s yet", shipment.tracking_code)
-            return
-        except RateLimited as err:
-            LOGGER.warning("%s", err)
-            return
-        except CarrierError as err:
-            LOGGER.warning("DHL lookup failed: %s", err)
+        update = None
+        for postcode in self._postcode_candidates(shipment):
+            try:
+                attempt = self._dhl.fetch(shipment.tracking_code, postcode)
+            except NotFound:
+                LOGGER.debug("DHL does not know %s yet", shipment.tracking_code)
+                return
+            except RateLimited as err:
+                LOGGER.warning("%s", err)
+                return
+            except CarrierError as err:
+                LOGGER.warning("DHL lookup failed: %s", err)
+                return
+
+            update = attempt
+            if attempt.window_start is not None:
+                # The window only comes back when the postcode proves we are
+                # the recipient, so this is the one that fits.
+                if postcode:
+                    self._store.note_postcode_worked(shipment.recipient, postcode)
+                break
+
+        if update is None:
             return
 
         shipment.status = update.status

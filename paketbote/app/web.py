@@ -15,8 +15,10 @@ from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 
 from . import __version__
+from . import settings as settings_module
 from .carriers import registry
 from .config import Config
+from .people import normalise_name
 from .models import (
     SOURCE_MANUAL,
     STATE_DELIVERED,
@@ -68,6 +70,7 @@ def shipment_payload(shipment) -> dict:
         "last_seen": shipment.last_seen.isoformat() if shipment.last_seen else None,
         "delivered_at": shipment.delivered_at.isoformat() if shipment.delivered_at else None,
         "bucket": bucket_of(shipment),
+        "recipient_key": normalise_name(shipment.recipient),
     }
 
 
@@ -97,7 +100,6 @@ def _request_poll() -> bool:
 
 def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
     app = Flask(__name__, static_folder=None)
-    config = Config.load()
 
     @app.get("/")
     def index():
@@ -105,6 +107,8 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
 
     @app.get("/api/state")
     def state():
+        # Read per request: settings change while this process is running.
+        config = Config.load()
         # A fresh connection per request: cheap for SQLite, and it keeps the
         # scheduler's own connection untouched.
         store = Store(db_path)
@@ -113,6 +117,7 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
             health = store.field_health()
             used = store.requests_today()
             dhl_used = store.carrier_requests_today("dhl")
+            recipients = store.known_recipients()
         finally:
             store.close()
 
@@ -147,8 +152,27 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
                 },
                 "language": config.language,
                 "carriers": registry.choices(),
+                "recipients": recipients,
+                "hidden_recipients": list(config.hidden_recipients),
             }
         )
+
+    @app.get("/api/settings")
+    def read_settings():
+        current = Config.load()
+        values = {f["key"]: getattr(current, f["key"], None) for f in settings_module.schema()}
+        return jsonify({
+            "schema": settings_module.schema(),
+            "groups": list(settings_module.GROUPS),
+            "values": values,
+        })
+
+    @app.post("/api/settings")
+    def write_settings():
+        data = request.get_json(silent=True) or {}
+        settings_module.save(data)
+        LOGGER.info("Settings updated from the interface")
+        return jsonify({"ok": True})
 
     @app.post("/api/shipments")
     def add_shipment():

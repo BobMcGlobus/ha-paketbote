@@ -51,6 +51,7 @@ class Config:
     dump_on_start: bool = False
     developer_mode: bool = False
     language: str = "auto"
+    hidden_recipients: tuple[str, ...] = ()
     log_level: str = "info"
 
     @property
@@ -78,7 +79,11 @@ class Config:
 
     @classmethod
     def load(cls, path: Path | None = None) -> "Config":
-        """Read the options file, ignoring anything this build does not know."""
+        """Defaults, then the add-on options, then whatever the interface saved.
+
+        The options in Home Assistant seed the first run; after that the
+        interface owns the settings, so they can be changed without a restart.
+        """
         if path is None:
             path = Path(os.environ.get("PAKETBOTE_OPTIONS", DEFAULT_OPTIONS_PATH))
 
@@ -86,14 +91,26 @@ class Config:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except FileNotFoundError:
             LOGGER.debug("No options file at %s; using defaults", path)
-            return cls()
+            return cls._build({})
         except json.JSONDecodeError as err:
             LOGGER.warning("Options file at %s is not valid JSON (%s); using defaults", path, err)
-            return cls()
+            return cls._build({})
+
+        return cls._build(raw)
+
+    @classmethod
+    def _build(cls, raw: dict) -> "Config":
+        from . import settings as settings_module
+
+        merged = dict(raw)
+        merged.update(settings_module.load())
 
         known = {f.name for f in fields(cls)}
-        unknown = set(raw) - known
+        unknown = set(merged) - known
         if unknown:
             LOGGER.debug("Ignoring unknown options: %s", ", ".join(sorted(unknown)))
 
-        return cls(**{k: v for k, v in raw.items() if k in known})
+        values = {k: v for k, v in merged.items() if k in known}
+        if "hidden_recipients" in values:
+            values["hidden_recipients"] = tuple(values["hidden_recipients"] or ())
+        return cls(**values)

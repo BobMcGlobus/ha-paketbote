@@ -42,7 +42,7 @@ unteren Rand erreichbar, auf dem Desktop über eine Leiste oben.
 | **Sendungen** | Was unterwegs ist, mit Statusring je Paket. Warnungen bei nötiger Anmeldung, Tageslimit oder defekten Selektoren |
 | **Archiv** | Zugestelltes: die letzten drei Tage sichtbar, danach im Archiv |
 | **Hinzufügen** | Sendung von Hand eintragen |
-| **Mehr** | Status, Trefferquoten der Selektoren, Sofortabruf, Zugang zum Browser |
+| **Mehr** | Alle Einstellungen, Status, Trefferquoten der Selektoren, Sofortabruf, Zugang zum Browser |
 
 Jede Sendung trägt einen Ring, dessen Füllstand die Stufe zeigt — bestellt,
 versandt, in Zustellung, zugestellt — mit passendem Symbol und Farbe. Bei
@@ -95,7 +95,30 @@ Die Aggregate werden vom Add-on berechnet, nicht in HA nachgebaut. Ein
 Template-Sensor über eine wechselnde Entity-Liste bricht bei jeder neuen
 Sendung. In Automationen deshalb `entity_id` verwenden, nie `device_id`.
 
+## Empfänger und Adressen
+
+Ein Amazon-Konto bedient oft einen ganzen Haushalt. Damit „Jonas Althoff",
+„jonas althoff", „Herr Jonas Althoff" und „Althoff, Jonas" als eine Person
+gelten, werden Namen vor dem Vergleich normalisiert: Groß- und Kleinschreibung,
+Anreden, Titel und Zweitnamen fallen weg. Umlaute bleiben — sie zu falten würde
+verschiedene Namen zusammenwerfen.
+
+Zu jedem Empfänger werden die beobachteten Postleitzahlen gemerkt. Eine Person
+kann an mehreren Adressen wohnen und an einer Adresse können mehrere Personen
+wohnen; DHL gibt das Zustellfenster aber nur heraus, wenn die Postleitzahl des
+Empfängers stimmt. Deshalb werden bis zu drei bekannte Postleitzahlen der Reihe
+nach versucht, und die, die geantwortet hat, rückt nach vorn.
+
+Auf der Seite **Sendungen** blendet ein Tippen auf einen Empfänger dessen
+Pakete dauerhaft aus — praktisch, wenn die Bestellungen der Eltern nicht ständig
+mitlaufen sollen.
+
 ## Konfiguration
+
+Die Einstellungen stehen in der Oberfläche unter **Mehr**. Die Add-on-Optionen
+in Home Assistant setzen nur die Startwerte; danach gewinnt, was in der
+Oberfläche steht. Bildschirmgröße und Protokollstufe wirken erst nach einem
+Neustart des Add-ons, alles Übrige ab dem nächsten Abruf.
 
 | Option | Default | Bedeutung |
 |---|---|---|

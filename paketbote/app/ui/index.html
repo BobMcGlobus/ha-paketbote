@@ -6,19 +6,22 @@
 <title>Paketbote</title>
 <style>
   :root {
-    --bg: #f5f6f9; --card: #fff; --line: #e5e7ec; --text: #14161b; --muted: #6b7280;
-    --accent: #5b57ff; --accent-soft: #ecebff; --ok: #17a463; --ok-soft: #e4f6ec;
-    --warn: #c07800; --warn-soft: #fbf0dd; --bad: #d13b3b; --bad-soft: #fbe9e9;
-    --chip: #eef0f5; --shadow: 0 1px 2px rgba(16,18,24,.06), 0 8px 24px -12px rgba(16,18,24,.18);
-    --nav: rgba(255,255,255,.86);
+    /* Off-white like letter paper, accent the brown-orange of a parcel. */
+    --bg: #faf7f1; --card: #fffdfa; --line: #e8e0d4; --text: #241d16; --muted: #7c7268;
+    --accent: #d0752c; --accent-ink: #a4571a; --ok: #2f8f5b; --ok-soft: #e6f2ea;
+    --warn: #c07a12; --warn-soft: #fbf0dc; --bad: #c34141; --bad-soft: #fbeae8;
+    --chip: #f1eade; --hero-a: #e4903f; --hero-b: #b45f1c;
+    --shadow: 0 1px 2px rgba(60,42,24,.05), 0 10px 26px -14px rgba(60,42,24,.3);
+    --nav: rgba(255,253,250,.9);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #101216; --card: #191c22; --line: #272b34; --text: #e9ebef; --muted: #949ba7;
-      --accent: #8b87ff; --accent-soft: #23234a; --ok: #45c583; --ok-soft: #14301f;
-      --warn: #e2a748; --warn-soft: #33260f; --bad: #f37272; --bad-soft: #351a1a;
-      --chip: #232830; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.7);
-      --nav: rgba(20,22,27,.86);
+      --bg: #16130f; --card: #1f1b16; --line: #322b23; --text: #f0eae2; --muted: #a2968a;
+      --accent: #e79240; --accent-ink: #f0a95f; --ok: #4cbd80; --ok-soft: #17301f;
+      --warn: #e0a752; --warn-soft: #33260f; --bad: #ef7373; --bad-soft: #351b1a;
+      --chip: #2a241d; --hero-a: #c0752c; --hero-b: #7d4213;
+      --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+      --nav: rgba(22,19,15,.9);
     }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -35,8 +38,7 @@
   /* key visual */
   .hero {
     border-radius: 1.1rem; padding: 1.1rem 1.25rem; margin-bottom: 1rem; color: #fff;
-    background: linear-gradient(135deg, #6b66ff 0%, #4a45d6 55%, #262croof 100%);
-    background: linear-gradient(135deg, #6b66ff 0%, #4a45d6 55%, #2b2a6b 100%);
+    background: linear-gradient(135deg, var(--hero-a) 0%, var(--hero-b) 100%);
     display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow);
   }
   .hero .txt { flex: 1; min-width: 0; }
@@ -75,10 +77,16 @@
   .ring > svg { transform: rotate(-90deg); display: block; }
   .ring .glyph { position: absolute; inset: 0; display: grid; place-items: center; }
   .body { flex: 1; min-width: 0; }
-  .body .title { font-weight: 620; line-height: 1.35; overflow-wrap: anywhere; }
-  .body .state { font-size: .85rem; font-weight: 560; margin-top: .1rem; }
+  .body .when { font-size: 1.12rem; font-weight: 680; letter-spacing: -.015em; line-height: 1.25; }
+  .body .when .clock { font-weight: 560; opacity: .85; }
+  .body .title { font-weight: 520; line-height: 1.35; overflow-wrap: anywhere;
+                 color: var(--muted); margin-top: .05rem; }
   .body .meta { color: var(--muted); font-size: .84rem; margin-top: .3rem;
                 display: flex; gap: .3rem .8rem; flex-wrap: wrap; align-items: center; }
+  .chips { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .75rem; }
+  .chip { font-size: .82rem; font-weight: 560; padding: .3rem .7rem; border-radius: 999px;
+          border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+  .chip.off { opacity: .45; text-decoration: line-through; }
   .badge { font-size: .76rem; font-weight: 600; padding: .1rem .45rem; border-radius: .38rem;
            background: var(--chip); color: var(--text); white-space: nowrap; }
   a { color: var(--accent); }
@@ -93,6 +101,9 @@
   .field { display: flex; flex-direction: column; gap: .25rem; }
   .field label { font-size: .78rem; color: var(--muted); }
   .field input, .field select { width: 100%; }
+  .field.switch { flex-direction: row; align-items: center; justify-content: space-between; gap: .75rem; }
+  .field.switch label { font-size: .9rem; color: var(--text); }
+  .field.switch input { width: 1.2rem; height: 1.2rem; flex: none; accent-color: var(--accent); }
   .msg { grid-column: 1/-1; font-size: .85rem; color: var(--bad); }
   details.add summary { cursor: pointer; font-weight: 620; padding: .15rem 0 .5rem; }
 
@@ -143,6 +154,7 @@
     <div id="alerts"></div>
     <div class="stats" id="stats"></div>
     <h2 id="hParcels"></h2>
+    <div class="chips" id="filter"></div>
     <div id="ships"></div>
   </section>
 
@@ -160,7 +172,7 @@
         <div class="field"><label for="code"></label><input id="code" autocomplete="off"></div>
         <div class="field"><label for="carrier"></label><select id="carrier"></select></div>
         <div class="field"><label for="title"></label><input id="title" autocomplete="off"></div>
-        <div class="field"><label for="recipient"></label><input id="recipient" autocomplete="off"></div>
+        <div class="field"><label for="recipient"></label><input id="recipient" list="knownPeople" autocomplete="off"><datalist id="knownPeople"></datalist></div>
         <div class="field"><label>&nbsp;</label><button class="primary" id="addBtn"></button></div>
         <div class="msg" id="addMsg"></div>
       </div>
@@ -169,6 +181,13 @@
   </section>
 
   <section data-page="settings">
+    <h2 id="hOptions"></h2>
+    <div id="options"></div>
+    <div class="panel">
+      <button class="primary" id="saveSettings"></button>
+      <span class="muted" id="saveMsg"></span>
+    </div>
+
     <h2 id="hStatus"></h2>
     <div class="panel" id="diag"></div>
     <h2 id="hSelectors"></h2>
@@ -203,7 +222,24 @@ const T = {
     remove: "Entfernen", removeConfirm: "Diese Sendung entfernen?",
     errCode: "Bitte eine Sendungsnummer eingeben.", errGeneric: "Konnte nicht gespeichert werden.",
     status: "Status", selectors: "Selektoren", actions: "Aktionen",
-    settingsHint: "Die Konfiguration liegt in den Add-on-Optionen von Home Assistant.",
+    options: "Einstellungen", save: "Speichern", saving: "Wird gespeichert…", saved: "Gespeichert.",
+    needsRestart: "wirkt nach Neustart",
+    groups: { amazon: "Amazon", polling: "Abrufrhythmus", carriers: "Zusteller",
+              extraction: "Auslesen", interface: "Darstellung", advanced: "Erweitert" },
+    labels: {
+      amazon_domain: "Amazon-Domain", language: "Sprache",
+      display_width: "Bildschirmbreite", display_height: "Bildschirmhöhe",
+      poll_idle_minutes: "Untätig", poll_pending_minutes: "Heute erwartet",
+      poll_window_minutes: "Im Zustellfenster", poll_approaching_minutes: "Kommt näher",
+      poll_imminent_minutes: "Gleich da", approaching_stops_threshold: "Schwelle: kommt näher",
+      imminent_stops_threshold: "Schwelle: gleich da", quiet_hours_start: "Nachtruhe ab",
+      quiet_hours_end: "Nachtruhe bis", daily_request_cap: "Tageslimit",
+      jitter_percent: "Streuung", dhl_api_key: "DHL-API-Schlüssel",
+      llm_provider: "LLM-Anbieter", llm_model: "LLM-Modell", llm_api_key: "LLM-API-Schlüssel",
+      developer_mode: "Entwicklermodus", dump_on_start: "Beim Start ausgeben", log_level: "Protokollstufe",
+    },
+    filterHint: "Antippen, um Empfänger auszublenden",
+    settingsHint: "Die Add-on-Optionen setzen nur die Startwerte. Was hier steht, gilt.",
     poll: "Jetzt abrufen", polling: "Angefragt…", browser: "Browser öffnen",
     version: "Version", amazonCalls: "Amazon-Abrufe heute", dhlCalls: "DHL-Abrufe heute",
     llm: "LLM-Fallback", dhl: "DHL-Abfrage", on: "aktiv", off: "aus",
@@ -237,7 +273,24 @@ const T = {
     remove: "Remove", removeConfirm: "Remove this shipment?",
     errCode: "Please enter a tracking number.", errGeneric: "Could not be saved.",
     status: "Status", selectors: "Selectors", actions: "Actions",
-    settingsHint: "Configuration lives in the add-on options in Home Assistant.",
+    options: "Settings", save: "Save", saving: "Saving…", saved: "Saved.",
+    needsRestart: "takes effect after a restart",
+    groups: { amazon: "Amazon", polling: "Polling", carriers: "Carriers",
+              extraction: "Extraction", interface: "Appearance", advanced: "Advanced" },
+    labels: {
+      amazon_domain: "Amazon domain", language: "Language",
+      display_width: "Screen width", display_height: "Screen height",
+      poll_idle_minutes: "Idle", poll_pending_minutes: "Due today",
+      poll_window_minutes: "Delivery window", poll_approaching_minutes: "Getting close",
+      poll_imminent_minutes: "Almost there", approaching_stops_threshold: "Threshold: getting close",
+      imminent_stops_threshold: "Threshold: almost there", quiet_hours_start: "Quiet hours from",
+      quiet_hours_end: "Quiet hours until", daily_request_cap: "Daily cap",
+      jitter_percent: "Jitter", dhl_api_key: "DHL API key",
+      llm_provider: "LLM provider", llm_model: "LLM model", llm_api_key: "LLM API key",
+      developer_mode: "Developer mode", dump_on_start: "Dump on start", log_level: "Log level",
+    },
+    filterHint: "Tap to hide a recipient",
+    settingsHint: "The add-on options only seed the first run. What is set here wins.",
     poll: "Refresh now", polling: "Requested…", browser: "Open browser",
     version: "Version", amazonCalls: "Amazon calls today", dhlCalls: "DHL calls today",
     llm: "LLM fallback", dhl: "DHL lookups", on: "on", off: "off",
@@ -323,13 +376,7 @@ function shipCard(s, { editable = false, delivered = false } = {}) {
     : s.status === "exception" ? "var(--bad)"
     : URGENT.has(s.state) ? "var(--warn)" : "var(--accent)";
   const bits = [];
-  if (delivered && s.delivered_at) bits.push(`<span>${esc(L.deliveredOn(fmtDate(s.delivered_at)))}</span>`);
-  else {
-    const when = fmtDate(s.expected_date);
-    if (when) bits.push(`<span>${esc(when)}</span>`);
-    if (s.window_start) bits.push(`<span>${esc(s.window_start.slice(0, 5))}–${esc((s.window_end || "").slice(0, 5))}</span>`);
-    if (s.stops_remaining !== null && s.stops_remaining !== undefined) bits.push(`<span>${esc(L.stopsLeft(s.stops_remaining))}</span>`);
-  }
+  if (!delivered && s.status) bits.push(`<span>${esc(L.statuses[s.status] || s.status)}</span>`);
   if (s.carrier) bits.push(`<span>${esc(s.carrier)}</span>`);
   if (s.recipient) bits.push(`<span class="badge">${esc(s.recipient)}</span>`);
   if (s.source === "manual") bits.push(`<span class="badge">${esc(L.manual)}</span>`);
@@ -349,10 +396,24 @@ function shipCard(s, { editable = false, delivered = false } = {}) {
       </div></div></div>`);
   }
 
+  const urgent = URGENT.has(s.state) || s.state === "WINDOW";
   return el(`<div class="ship">${ring(s)}<div class="body">
+    <div class="when" style="color:${urgent ? colour : "inherit"}">${headline(s, delivered)}</div>
     <div class="title">${esc(s.title || s.shipment_id)}</div>
-    <div class="state" style="color:${colour}">${esc(L.states[s.state] || s.state)} · ${esc(L.statuses[s.status] || s.status)}</div>
-    <div class="meta">${bits.join("")}</div></div></div>`);
+    <div class="meta"><span class="badge">${esc(L.states[s.state] || s.state)}</span>${bits.join("")}</div>
+    </div></div>`);
+}
+
+function headline(s, delivered) {
+  if (delivered) return esc(L.deliveredOn(fmtDate(s.delivered_at)));
+  const day = fmtDate(s.expected_date);
+  const window = s.window_start
+    ? `<span class="clock">${esc(s.window_start.slice(0, 5))}–${esc((s.window_end || "").slice(0, 5))}</span>` : "";
+  if (s.stops_remaining !== null && s.stops_remaining !== undefined && s.stops_remaining <= 9) {
+    return `${esc(L.stopsLeft(s.stops_remaining))} ${window}`;
+  }
+  if (!day) return esc(L.statuses[s.status] || s.status);
+  return `${esc(day.charAt(0).toUpperCase() + day.slice(1))} ${window}`;
 }
 
 function renderNav(counts) {
@@ -364,8 +425,20 @@ function renderNav(counts) {
       <span>${esc(L.nav[key])}</span>${n ? `<span class="pill">${n}</span>` : ""}</a>`).join("");
 }
 
+function renderFilter(data) {
+  const box = $("filter");
+  const people = data.recipients || [];
+  if (people.length < 2) { box.innerHTML = ""; return; }
+  const hidden = new Set(data.hidden_recipients || []);
+  box.innerHTML = people.map((r) =>
+    `<button class="chip ${hidden.has(r.key) ? "off" : ""}" data-filter="${esc(r.key)}"
+      title="${esc(L.filterHint)}">${esc(r.display)}</button>`).join("");
+}
+
 function renderParcels(data) {
-  const current = data.shipments.filter((s) => s.bucket === "current");
+  const hidden = new Set(data.hidden_recipients || []);
+  const current = data.shipments.filter(
+    (s) => s.bucket === "current" && !hidden.has(s.recipient_key));
   const today = data.status?.pakete_heute ?? 0;
   $("heroBig").textContent = current.length === 0 ? L.heroNone
     : current.length === 1 ? L.heroOne : L.heroMany(current.length);
@@ -377,6 +450,7 @@ function renderParcels(data) {
     [L.stops, st.naechste_stopps ?? "–"], [L.lastPoll, fmtAgo(st.letzter_abruf)],
   ].map(([k, v]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`).join("");
 
+  renderFilter(data);
   const box = $("ships"); box.innerHTML = "";
   if (!current.length) box.innerHTML = `<div class="empty">${esc(L.empty)}</div>`;
   else current.forEach((s) => box.append(shipCard(s, { editable: true })));
@@ -419,12 +493,53 @@ function renderSettings(data) {
     : `<div class="muted">${esc(L.noneYet)}</div>`;
 }
 
+let settingsCache = null;
+
+function renderOptions(payload) {
+  settingsCache = payload;
+  const byGroup = {};
+  for (const f of payload.schema) (byGroup[f.group] ||= []).push(f);
+
+  $("options").innerHTML = payload.groups.filter((g) => byGroup[g]).map((group) => {
+    const rows = byGroup[group].map((f) => {
+      const value = payload.values[f.key];
+      const label = `${esc(L.labels[f.key] || f.key)}${f.unit ? ` (${esc(f.unit)})` : ""}`
+        + (f.restart ? ` <span class="muted">· ${esc(L.needsRestart)}</span>` : "");
+      let input;
+      if (f.kind === "bool") {
+        input = `<input type="checkbox" data-key="${esc(f.key)}" ${value ? "checked" : ""}>`;
+      } else if (f.kind === "select") {
+        input = `<select data-key="${esc(f.key)}">${f.options.map((o) =>
+          `<option ${o === value ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+      } else if (f.kind === "int") {
+        input = `<input type="number" data-key="${esc(f.key)}" value="${esc(value)}"
+          min="${f.min ?? ""}" max="${f.max ?? ""}">`;
+      } else {
+        input = `<input type="${f.kind === "password" ? "password" : "text"}"
+          data-key="${esc(f.key)}" value="${esc(value ?? "")}" autocomplete="off">`;
+      }
+      const cls = f.kind === "bool" ? "field switch" : "field";
+      return `<div class="${cls}"><label>${label}</label>${input}</div>`;
+    }).join("");
+    return `<h2>${esc(L.groups[group] || group)}</h2><div class="panel"><div class="grid">${rows}</div></div>`;
+  }).join("");
+}
+
+async function loadOptions() {
+  try {
+    const res = await fetch("api/settings", { cache: "no-store" });
+    if (res.ok) renderOptions(await res.json());
+  } catch (err) { /* settings stay as they were */ }
+}
+
 function applyLabels(data) {
   $("hParcels").textContent = L.parcels;
   $("hDelivered").textContent = L.delivered;
   $("hArchive").textContent = L.archive;
   $("hAdd").textContent = L.add;
   $("addHint").textContent = L.addHint;
+  $("hOptions").textContent = L.options;
+  $("saveSettings").textContent = L.save;
   $("hStatus").textContent = L.status;
   $("hSelectors").textContent = L.selectors;
   $("hActions").textContent = L.actions;
@@ -436,6 +551,8 @@ function applyLabels(data) {
   document.querySelector('label[for="carrier"]').textContent = L.carrier;
   document.querySelector('label[for="title"]').textContent = L.title;
   document.querySelector('label[for="recipient"]').textContent = L.recipient;
+  $("knownPeople").innerHTML = (data.recipients || [])
+    .map((r) => `<option value="${esc(r.display)}">`).join("");
   if (!carriersLoaded && data.carriers?.length) {
     $("carrier").innerHTML = data.carriers
       .map((c) => `<option value="${esc(c.key)}">${esc(c.name)}${c.automatic ? " ✓" : ""}</option>`).join("");
@@ -474,6 +591,17 @@ document.addEventListener("click", async (event) => {
   const nav = event.target.closest?.("[data-nav]");
   if (nav) { event.preventDefault(); editing = null; show(nav.dataset.nav); return; }
 
+  const filter = event.target.closest?.("[data-filter]");
+  if (filter) {
+    const key = filter.dataset.filter;
+    const hidden = new Set(latest?.hidden_recipients || []);
+    hidden.has(key) ? hidden.delete(key) : hidden.add(key);
+    await fetch("api/settings", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ hidden_recipients: [...hidden] }) });
+    refresh();
+    return;
+  }
+
   const edit = event.target.dataset?.edit;
   if (edit) { editing = edit; renderParcels(latest); return; }
   if (event.target.dataset?.cancel) { editing = null; renderParcels(latest); return; }
@@ -493,6 +621,25 @@ document.addEventListener("click", async (event) => {
     await fetch(`api/shipments/${encodeURIComponent(remove)}`, { method: "DELETE" });
     refresh();
   }
+});
+
+$("saveSettings").addEventListener("click", async (event) => {
+  const b = event.currentTarget, msg = $("saveMsg");
+  b.disabled = true; b.textContent = L.saving; msg.textContent = "";
+  const payload = {};
+  for (const node of document.querySelectorAll("#options [data-key]")) {
+    const field = settingsCache.schema.find((f) => f.key === node.dataset.key);
+    payload[node.dataset.key] = field.kind === "bool" ? node.checked
+      : field.kind === "int" ? Number(node.value) : node.value;
+  }
+  try {
+    const res = await fetch("api/settings", { method: "POST",
+      headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error(res.status);
+    msg.textContent = L.saved;
+    await loadOptions(); refresh();
+  } catch (err) { msg.textContent = L.errGeneric; }
+  finally { b.disabled = false; b.textContent = L.save; }
 });
 
 $("poll").addEventListener("click", async (event) => {
@@ -522,6 +669,7 @@ $("addBtn").addEventListener("click", async (event) => {
 });
 
 refresh();
+loadOptions();
 setInterval(refresh, 15000);
 </script>
 </body>

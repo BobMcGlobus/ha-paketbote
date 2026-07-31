@@ -13,6 +13,7 @@ from datetime import date, datetime, time
 from pathlib import Path
 
 from .models import SOURCE_AMAZON, STATE_IDLE, STATUS_UNKNOWN, Shipment
+from .people import display_name, normalise_name, postcode_of
 
 LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +47,19 @@ CREATE TABLE IF NOT EXISTS field_health (
     fail_count INTEGER NOT NULL DEFAULT 0,
     last_ok    TEXT,
     last_fail  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS recipients (
+    key      TEXT PRIMARY KEY,
+    display  TEXT,
+    hits     INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS recipient_postcodes (
+    key      TEXT NOT NULL,
+    postcode TEXT NOT NULL,
+    hits     INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (key, postcode)
 );
 
 CREATE TABLE IF NOT EXISTS carrier_budget (
@@ -189,6 +203,75 @@ class Store:
             last_seen=_as_datetime(row["last_seen"]),
             delivered_at=_as_datetime(row["delivered_at"]),
         )
+
+    # -- who lives where ---------------------------------------------------
+
+    def learn_recipient(self, recipient: str, address: str = "") -> None:
+        """Remember a spelling and, if the address gives one, a postcode.
+
+        This is what lets DHL be asked with the right postcode for a parcel
+        whose own page never showed an address.
+        """
+        key = normalise_name(recipient)
+        if not key:
+            return
+
+        row = self._db.execute("SELECT display FROM recipients WHERE key = ?", (key,)).fetchone()
+        best = display_name([row["display"] if row else "", recipient])
+        self._db.execute(
+            """
+            INSERT INTO recipients (key, display, hits) VALUES (?, ?, 1)
+            ON CONFLICT(key) DO UPDATE SET display = ?, hits = hits + 1
+            """,
+            (key, best, best),
+        )
+
+        postcode = postcode_of(address)
+        if postcode:
+            self._db.execute(
+                """
+                INSERT INTO recipient_postcodes (key, postcode, hits) VALUES (?, ?, 1)
+                ON CONFLICT(key, postcode) DO UPDATE SET hits = hits + 1
+                """,
+                (key, postcode),
+            )
+
+    def postcodes_for(self, recipient: str) -> list[str]:
+        """Postcodes seen for this recipient, most frequent first."""
+        key = normalise_name(recipient)
+        if not key:
+            return []
+        rows = self._db.execute(
+            "SELECT postcode FROM recipient_postcodes WHERE key = ? ORDER BY hits DESC, postcode",
+            (key,),
+        ).fetchall()
+        return [row["postcode"] for row in rows]
+
+    def note_postcode_worked(self, recipient: str, postcode: str) -> None:
+        """Bump the postcode that actually answered, so it is tried first."""
+        key = normalise_name(recipient)
+        if not key or not postcode:
+            return
+        self._db.execute(
+            """
+            INSERT INTO recipient_postcodes (key, postcode, hits) VALUES (?, ?, 3)
+            ON CONFLICT(key, postcode) DO UPDATE SET hits = hits + 3
+            """,
+            (key, postcode),
+        )
+
+    def known_recipients(self) -> list[dict]:
+        rows = self._db.execute(
+            "SELECT key, display, hits FROM recipients ORDER BY hits DESC, display"
+        ).fetchall()
+        return [
+            {
+                "key": row["key"],
+                "display": row["display"] or row["key"],
+                "postcodes": self.postcodes_for(row["display"] or row["key"]),
+            }
+            for row in rows
+        ]
 
     # -- selector health ---------------------------------------------------
 

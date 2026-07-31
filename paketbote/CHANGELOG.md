@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.11.0
+
+- **Alle Einstellungen in der Oberfläche**, gruppiert unter *Mehr*. Die
+  Add-on-Optionen setzen nur noch die Startwerte; danach gilt, was in der
+  Oberfläche steht. Bildschirmgröße und Protokollstufe sind als „wirkt nach
+  Neustart" gekennzeichnet
+- **Empfänger werden zusammengeführt.** „Jonas Althoff", „jonas althoff",
+  „Herr Jonas Althoff" und „Althoff, Jonas" gelten als eine Person: Anreden,
+  Titel und Zweitnamen fallen vor dem Vergleich weg
+- **Adressen ebenso**, und je Empfänger werden die bekannten Postleitzahlen
+  gemerkt. DHL wird damit bis zu dreimal mit unterschiedlichen Postleitzahlen
+  gefragt, bis das Zustellfenster kommt — die erfolgreiche rückt nach vorn
+- **Empfänger dauerhaft ausblenden:** ein Tipp auf den Namen filtert dessen
+  Pakete aus der Hauptansicht
+- Beim manuellen Anlegen werden bekannte Empfänger vorgeschlagen
+- **Ankunft ist jetzt die Schlagzeile** jeder Karte — Datum, Fenster oder
+  verbleibende Stopps stehen groß, der Artikelname darunter
+- Helles Design in Karton-Orange auf Briefpapier-Weiß
+
 ## 0.10.0
 
 - **Fehlalarm behoben:** „Selektoren greifen nicht" schlug schon an, wenn eine
