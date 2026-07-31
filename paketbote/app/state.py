@@ -12,7 +12,7 @@ import sqlite3
 from datetime import date, datetime, time
 from pathlib import Path
 
-from .models import STATE_IDLE, STATUS_UNKNOWN, Shipment
+from .models import SOURCE_AMAZON, STATE_IDLE, STATUS_UNKNOWN, Shipment
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS shipments (
     delivery_address TEXT,
     carrier         TEXT,
     tracking_code   TEXT,
+    source          TEXT,
     status          TEXT,
     stops_remaining INTEGER,
     window_start    TEXT,
@@ -82,8 +83,12 @@ class Store:
     def __init__(self, path: Path | str = DEFAULT_DB_PATH) -> None:
         self._path = Path(path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._db = sqlite3.connect(str(self._path), isolation_level=None)
+        # The interface writes too, so allow concurrent readers and give
+        # either side a moment rather than failing on a locked database.
+        self._db = sqlite3.connect(str(self._path), isolation_level=None, timeout=10.0)
         self._db.row_factory = sqlite3.Row
+        self._db.execute("PRAGMA journal_mode=WAL")
+        self._db.execute("PRAGMA busy_timeout=10000")
         self._db.executescript(SCHEMA)
         self._migrate()
         LOGGER.debug("State database at %s", self._path)
@@ -95,7 +100,7 @@ class Store:
         database written by an older build needs the new columns added.
         """
         existing = {row["name"] for row in self._db.execute("PRAGMA table_info(shipments)")}
-        for column in ("recipient", "delivery_address", "tracking_code"):
+        for column in ("recipient", "delivery_address", "tracking_code", "source"):
             if column not in existing:
                 self._db.execute(f"ALTER TABLE shipments ADD COLUMN {column} TEXT")
                 LOGGER.info("Added column %s to the shipments table", column)
@@ -109,10 +114,10 @@ class Store:
         self._db.execute(
             """
             INSERT INTO shipments (shipment_id, order_id, tracking_url, title, recipient,
-                                   delivery_address, carrier, tracking_code,
+                                   delivery_address, carrier, tracking_code, source,
                                    status, stops_remaining, window_start, window_end,
                                    expected_date, state, first_seen, last_seen)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(
                 (SELECT first_seen FROM shipments WHERE shipment_id = ?), ?), ?)
             ON CONFLICT(shipment_id) DO UPDATE SET
                 order_id=excluded.order_id,
@@ -122,6 +127,7 @@ class Store:
                 delivery_address=excluded.delivery_address,
                 carrier=excluded.carrier,
                 tracking_code=excluded.tracking_code,
+                source=excluded.source,
                 status=excluded.status,
                 stops_remaining=excluded.stops_remaining,
                 window_start=excluded.window_start,
@@ -139,6 +145,7 @@ class Store:
                 shipment.delivery_address,
                 shipment.carrier,
                 shipment.tracking_code,
+                shipment.source,
                 shipment.status,
                 shipment.stops_remaining,
                 _iso(shipment.window_start),
@@ -169,6 +176,7 @@ class Store:
             delivery_address=row["delivery_address"] or "",
             carrier=row["carrier"],
             tracking_code=row["tracking_code"] or "",
+            source=row["source"] or SOURCE_AMAZON,
             status=row["status"] or STATUS_UNKNOWN,
             stops_remaining=row["stops_remaining"],
             window_start=_as_time(row["window_start"]),

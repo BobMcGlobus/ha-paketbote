@@ -1,0 +1,68 @@
+configuration:
+  amazon_domain:
+    name: Amazon-Domain
+    description: Bestimmt Bestellübersicht und Tracking-Seiten, z. B. amazon.de.
+  display_width:
+    name: Bildschirmbreite
+    description: Auflösung des virtuellen Bildschirms. Kleiner ist auf dem Handy flüssiger.
+  display_height:
+    name: Bildschirmhöhe
+    description: Auflösung des virtuellen Bildschirms.
+  llm_provider:
+    name: LLM-Anbieter
+    description: Nur für den Fallback, wenn die CSS-Selektoren nicht mehr greifen.
+  llm_model:
+    name: LLM-Modell
+    description: Freies Textfeld, damit ein Modellwechsel keinen Neubau braucht.
+  llm_api_key:
+    name: LLM-API-Schlüssel
+    description: Optional. Ohne Schlüssel läuft alles weiter, nur ohne Fallback.
+  dhl_api_key:
+    name: DHL-API-Schlüssel
+    description: Optional. Von developer.dhl.com, Shipment Tracking — Unified. Schaltet
+      die DHL-Abfrage frei.
+  poll_idle_minutes:
+    name: 'Intervall: untätig'
+    description: Abstand, wenn keine Sendung aktiv ist.
+  poll_pending_minutes:
+    name: 'Intervall: heute erwartet'
+    description: Abstand, wenn heute zugestellt wird, das Fenster aber noch zu ist.
+  poll_window_minutes:
+    name: 'Intervall: Zustellfenster'
+    description: Abstand, während das Zustellfenster offen ist.
+  poll_approaching_minutes:
+    name: 'Intervall: kommt näher'
+    description: Abstand, sobald weniger Stopps als die Schwelle übrig sind.
+  poll_imminent_minutes:
+    name: 'Intervall: gleich da'
+    description: Abstand kurz vor der Zustellung.
+  approaching_stops_threshold:
+    name: 'Schwelle: kommt näher'
+    description: Ab so vielen verbleibenden Stopps wird enger abgefragt.
+  imminent_stops_threshold:
+    name: 'Schwelle: gleich da'
+    description: Ab so vielen verbleibenden Stopps wird im Minutentakt abgefragt.
+  quiet_hours_start:
+    name: Nachtruhe ab
+    description: Ab dieser Stunde gilt immer das untätige Intervall.
+  quiet_hours_end:
+    name: Nachtruhe bis
+    description: Bis zu dieser Stunde gilt immer das untätige Intervall.
+  daily_request_cap:
+    name: Tageslimit
+    description: Harter Stopp bis Mitternacht, wenn so viele Abrufe erreicht sind.
+  jitter_percent:
+    name: Streuung
+    description: Zufällige Abweichung auf jedes Intervall, gegen auffällige Regelmäßigkeit.
+  dump_on_start:
+    name: Beim Start ausgeben
+    description: Schreibt einmalig alle Seiten nach /config/dumps. Enthält die Lieferadresse.
+  developer_mode:
+    name: Entwicklermodus
+    description: Trefferquote je Feld als Attribute, plus Ablage nicht lesbarer Seiten.
+  language:
+    name: Sprache
+    description: Sprache der Oberfläche. „auto“ folgt dem Browser.
+  log_level:
+    name: Protokollstufe
+    description: „debug“ zeigt jeden Schritt.

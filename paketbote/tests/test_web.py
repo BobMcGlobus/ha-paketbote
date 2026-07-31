@@ -120,12 +120,88 @@ class TestPollEndpoint(WebTestCase):
         self.assertEqual(self.client.get("/api/poll").status_code, 405)
 
 
+class TestManualShipments(WebTestCase):
+    def _add(self, **payload):
+        body = {"tracking_code": "00340434161094042557", "carrier": "dhl"}
+        body.update(payload)
+        return self.client.post("/api/shipments", json=body)
+
+    def test_creates_a_shipment(self):
+        response = self._add(title="Geschenk", recipient="Jonas")
+        self.assertEqual(response.status_code, 201)
+        shipment_id = response.get_json()["shipment_id"]
+
+        store = Store(self.db)
+        try:
+            found = {s.shipment_id: s for s in store.all_shipments()}[shipment_id]
+        finally:
+            store.close()
+        self.assertEqual(found.source, "manual")
+        self.assertEqual(found.carrier, "DHL")
+        self.assertEqual(found.tracking_code, "00340434161094042557")
+        self.assertEqual(found.title, "Geschenk")
+        self.assertIn("00340434161094042557", found.tracking_url)
+
+    def test_falls_back_to_the_number_as_a_label(self):
+        response = self._add(title="")
+        store = Store(self.db)
+        try:
+            found = {s.shipment_id: s for s in store.all_shipments()}[response.get_json()["shipment_id"]]
+        finally:
+            store.close()
+        self.assertEqual(found.title, "00340434161094042557")
+
+    def test_tracking_number_is_required(self):
+        response = self._add(tracking_code="   ")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "tracking_code_required")
+
+    def test_carrier_must_be_known(self):
+        response = self._add(carrier="rohrpost")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "unknown_carrier")
+
+    def test_carrier_may_be_given_by_name(self):
+        self.assertEqual(self._add(carrier="Hermes").status_code, 201)
+
+    def test_adding_asks_for_a_poll(self):
+        web.POLL_REQUEST_PATH.unlink(missing_ok=True)
+        self._add()
+        self.assertTrue(web.POLL_REQUEST_PATH.exists())
+
+    def test_appears_in_the_state_endpoint(self):
+        self._add(recipient="Jonas")
+        data = self.client.get("/api/state").get_json()
+        manual = [s for s in data["shipments"] if s["source"] == "manual"]
+        self.assertEqual(len(manual), 1)
+        self.assertEqual(manual[0]["recipient"], "Jonas")
+
+    def test_delete_removes_it(self):
+        shipment_id = self._add().get_json()["shipment_id"]
+        self.assertEqual(self.client.delete(f"/api/shipments/{shipment_id}").status_code, 200)
+        data = self.client.get("/api/state").get_json()
+        self.assertFalse([s for s in data["shipments"] if s["source"] == "manual"])
+
+    def test_carrier_choices_are_offered(self):
+        data = self.client.get("/api/state").get_json()
+        names = [c["name"] for c in data["carriers"]]
+        self.assertIn("DHL", names)
+        self.assertIn("Hermes", names)
+        # DHL is the only one queried automatically so far.
+        self.assertTrue(next(c for c in data["carriers"] if c["name"] == "DHL")["automatic"])
+
+
 class TestIndex(WebTestCase):
     def test_serves_the_page(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         body = response.get_data(as_text=True)
         self.assertIn("Paketbote", body)
+
+    def test_offers_both_languages(self):
+        body = self.client.get("/").get_data(as_text=True)
+        self.assertIn("Sendung manuell hinzufügen", body)
+        self.assertIn("Add a shipment manually", body)
 
     def test_page_uses_relative_urls_so_ingress_works(self):
         # An absolute /api/state would leave the ingress path prefix behind.

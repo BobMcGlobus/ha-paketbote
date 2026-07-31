@@ -1,0 +1,69 @@
+configuration:
+  amazon_domain:
+    name: Amazon domain
+    description: Decides the order list and tracking pages, e.g. amazon.de.
+  display_width:
+    name: Screen width
+    description: Resolution of the virtual screen. Smaller is smoother on a phone.
+  display_height:
+    name: Screen height
+    description: Resolution of the virtual screen.
+  llm_provider:
+    name: LLM provider
+    description: Only used as a fallback when the CSS selectors stop matching.
+  llm_model:
+    name: LLM model
+    description: Free text, so switching models needs no rebuild.
+  llm_api_key:
+    name: LLM API key
+    description: Optional. Without a key everything keeps working, just without the
+      fallback.
+  dhl_api_key:
+    name: DHL API key
+    description: Optional. From developer.dhl.com, Shipment Tracking — Unified. Enables
+      DHL lookups.
+  poll_idle_minutes:
+    name: 'Interval: idle'
+    description: Gap while nothing is in transit.
+  poll_pending_minutes:
+    name: 'Interval: due today'
+    description: Gap while delivery is due today but the window is not open.
+  poll_window_minutes:
+    name: 'Interval: delivery window'
+    description: Gap while the delivery window is open.
+  poll_approaching_minutes:
+    name: 'Interval: getting close'
+    description: Gap once fewer stops remain than the threshold.
+  poll_imminent_minutes:
+    name: 'Interval: almost there'
+    description: Gap shortly before delivery.
+  approaching_stops_threshold:
+    name: 'Threshold: getting close'
+    description: Poll more often below this many remaining stops.
+  imminent_stops_threshold:
+    name: 'Threshold: almost there'
+    description: Poll every minute below this many remaining stops.
+  quiet_hours_start:
+    name: Quiet hours from
+    description: From this hour the idle interval always applies.
+  quiet_hours_end:
+    name: Quiet hours until
+    description: Until this hour the idle interval always applies.
+  daily_request_cap:
+    name: Daily cap
+    description: Hard stop until midnight once this many requests are spent.
+  jitter_percent:
+    name: Jitter
+    description: Random spread on every interval, against conspicuous regularity.
+  dump_on_start:
+    name: Dump on start
+    description: Writes every page to /config/dumps once. Contains your delivery address.
+  developer_mode:
+    name: Developer mode
+    description: Per-field hit rate as attributes, plus copies of unreadable pages.
+  language:
+    name: Language
+    description: Interface language. "auto" follows the browser.
+  log_level:
+    name: Log level
+    description: '"debug" shows every step.'

@@ -43,6 +43,10 @@ greifen.
   Intervall zu warten.
 - **Browser öffnen** führt zum bisherigen Browser-Panel — für Login, MFA und
   Captchas.
+- **Sendung manuell hinzufügen** nimmt eine Sendungsnummer samt Zusteller auf,
+  für Pakete, die keine Quelle kennt. Bei DHL wird der Status danach automatisch
+  geholt, sofern ein Schlüssel hinterlegt ist; bei den übrigen Zustellern
+  entsteht ein Link zur jeweiligen Sendungsverfolgung.
 
 Die Oberfläche läuft als eigener Prozess und liest nur mit. Ein Fehler dort
 kann die Abrufschleife nicht anhalten.
@@ -104,6 +108,7 @@ Sendung. In Automationen deshalb `entity_id` verwenden, nie `device_id`.
 | `jitter_percent` | 20 | Zufallsstreuung auf jedes Intervall |
 | `dump_on_start` | `false` | Beim Start alle Seiten nach `/config/dumps/` schreiben |
 | `developer_mode` | `false` | Siehe unten |
+| `language` | `auto` | Sprache der Oberfläche: `auto`, `de`, `en` |
 | `log_level` | `info` | `trace` zeigt jeden Schritt |
 
 MQTT-Zugangsdaten kommen über die Supervisor-Services-API und stehen bewusst

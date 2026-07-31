@@ -12,11 +12,12 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 
 from . import __version__
+from .carriers import registry
 from .config import Config
-from .models import STATE_DELIVERED
+from .models import SOURCE_MANUAL, STATE_DELIVERED, Shipment, sanitise_id, shorten
 from .state import DEFAULT_DB_PATH, Store
 
 LOGGER = logging.getLogger(__name__)
@@ -40,6 +41,7 @@ def read_status() -> dict:
 def shipment_payload(shipment) -> dict:
     return {
         "shipment_id": shipment.shipment_id,
+        "source": shipment.source,
         "order_id": shipment.order_id,
         "title": shipment.title,
         "recipient": shipment.recipient,
@@ -55,6 +57,16 @@ def shipment_payload(shipment) -> dict:
         "tracking_url": shipment.tracking_url,
         "last_seen": shipment.last_seen.isoformat() if shipment.last_seen else None,
     }
+
+
+def _request_poll() -> bool:
+    """Nudge the scheduler. It checks for this file while it sleeps."""
+    try:
+        POLL_REQUEST_PATH.write_text(datetime.now().isoformat(), encoding="utf-8")
+        return True
+    except OSError:
+        LOGGER.warning("Could not write the poll request file")
+        return False
 
 
 def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
@@ -101,16 +113,63 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
                     "llm": bool(config.llm_api_key),
                     "developer_mode": config.developer_mode,
                 },
+                "language": config.language,
+                "carriers": registry.choices(),
             }
         )
+
+    @app.post("/api/shipments")
+    def add_shipment():
+        """Track a parcel the sources never saw — a friend's gift, a return."""
+        data = request.get_json(silent=True) or {}
+        code = str(data.get("tracking_code") or "").strip()
+        carrier = str(data.get("carrier") or "").strip()
+
+        if not code:
+            return jsonify({"ok": False, "error": "tracking_code_required"}), 400
+        info = registry.lookup(carrier)
+        if info is None:
+            return jsonify({"ok": False, "error": "unknown_carrier"}), 400
+
+        shipment_id = f"manual-{sanitise_id(code)}"
+        shipment = Shipment(
+            shipment_id=shipment_id,
+            order_id="",
+            tracking_url=info.url_for(code),
+            title=shorten(str(data.get("title") or "").strip()) or code,
+            recipient=str(data.get("recipient") or "").strip(),
+            carrier=info.name,
+            tracking_code=code,
+            source=SOURCE_MANUAL,
+            last_seen=datetime.now(),
+        )
+
+        store = Store(db_path)
+        try:
+            store.save(shipment)
+        finally:
+            store.close()
+
+        LOGGER.info("Added manual shipment %s (%s)", shipment_id, info.name)
+        _request_poll()
+        return jsonify({"ok": True, "shipment_id": shipment_id}), 201
+
+    @app.delete("/api/shipments/<shipment_id>")
+    def remove_shipment(shipment_id: str):
+        store = Store(db_path)
+        try:
+            store.forget(shipment_id)
+        finally:
+            store.close()
+        LOGGER.info("Removed shipment %s", shipment_id)
+        _request_poll()
+        return jsonify({"ok": True})
 
     @app.post("/api/poll")
     def request_poll():
         """Ask the scheduler to run a cycle now rather than at its own pace."""
-        try:
-            POLL_REQUEST_PATH.write_text(datetime.now().isoformat(), encoding="utf-8")
-        except OSError as err:
-            return jsonify({"ok": False, "error": str(err)}), 500
+        if not _request_poll():
+            return jsonify({"ok": False, "error": "cannot_write_request"}), 500
         LOGGER.info("Poll requested from the interface")
         return jsonify({"ok": True})
 

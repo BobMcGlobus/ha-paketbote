@@ -16,6 +16,9 @@ STATE_APPROACHING = "APPROACHING"
 STATE_IMMINENT = "IMMINENT"
 STATE_DELIVERED = "DELIVERED"
 
+SOURCE_AMAZON = "amazon"
+SOURCE_MANUAL = "manual"
+
 STATUS_UNKNOWN = "unknown"
 STATUS_ORDERED = "ordered"
 STATUS_SHIPPED = "shipped"
@@ -30,6 +33,11 @@ KNOWN_STATUSES = (
     STATUS_DELIVERED,
     STATUS_EXCEPTION,
 )
+
+
+def sanitise_id(value: str) -> str:
+    """Reduce an identifier to something safe for MQTT topics and entity ids."""
+    return re.sub(r"[^A-Za-z0-9_-]+", "_", value or "").strip("_")
 
 
 def shorten(title: str, limit: int = TITLE_MAX_LENGTH) -> str:
@@ -63,6 +71,9 @@ class Shipment:
     overview_text: str = ""
     carrier: str | None = None
     tracking_code: str = ""
+    # Which module put this here. Manual entries must survive a poll that
+    # cannot see them.
+    source: str = SOURCE_AMAZON
     status: str = STATUS_UNKNOWN
     stops_remaining: int | None = None
     window_start: time | None = None

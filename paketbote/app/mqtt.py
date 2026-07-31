@@ -170,6 +170,11 @@ class Publisher:
         self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=BASE_TOPIC)
         self._announced: set[str] = set()
 
+    @property
+    def announced(self) -> set[str]:
+        """Shipments Home Assistant currently knows about."""
+        return set(self._announced)
+
     # -- lifecycle ---------------------------------------------------------
 
     def connect(self) -> None:

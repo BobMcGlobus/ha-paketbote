@@ -24,24 +24,23 @@
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 2rem env(safe-area-inset-left);
   }
   .wrap { max-width: 60rem; margin: 0 auto; padding: 1rem; }
-  header { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  header { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; flex-wrap: wrap; }
   h1 { font-size: 1.35rem; margin: 0; font-weight: 650; letter-spacing: -.01em; }
   .dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--muted); flex: none; }
   .dot.live { background: var(--ok); }
   .spacer { flex: 1; }
-  button, .btn {
-    font: inherit; font-weight: 550; border: 1px solid var(--line); border-radius: .6rem;
-    padding: .5rem .9rem; background: var(--card); color: var(--text);
-    cursor: pointer; text-decoration: none; display: inline-block;
+  button, .btn, select, input {
+    font: inherit; border: 1px solid var(--line); border-radius: .6rem;
+    padding: .5rem .8rem; background: var(--card); color: var(--text);
   }
+  button, .btn { font-weight: 550; cursor: pointer; text-decoration: none; display: inline-block; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   button:disabled { opacity: .55; cursor: default; }
+  button.link { border: 0; background: none; color: var(--muted); padding: 0; font-weight: 500; text-decoration: underline; }
+  button.link:hover { color: var(--bad); }
 
-  .alert {
-    border-radius: .7rem; padding: .8rem 1rem; margin-bottom: .75rem;
-    display: flex; gap: .75rem; align-items: center; flex-wrap: wrap;
-    border: 1px solid transparent;
-  }
+  .alert { border-radius: .7rem; padding: .8rem 1rem; margin-bottom: .75rem;
+           display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; border: 1px solid transparent; }
   .alert.bad  { background: color-mix(in srgb, var(--bad) 14%, var(--card)); border-color: var(--bad); }
   .alert.warn { background: color-mix(in srgb, var(--warn) 14%, var(--card)); border-color: var(--warn); }
   .alert strong { font-weight: 650; }
@@ -59,9 +58,17 @@
   .badge { font-size: .78rem; font-weight: 600; padding: .15rem .5rem; border-radius: .4rem; background: var(--chip); color: var(--text); white-space: nowrap; }
   .badge.now  { background: color-mix(in srgb, var(--ok) 22%, var(--card)); color: var(--ok); }
   .badge.soon { background: color-mix(in srgb, var(--warn) 22%, var(--card)); color: var(--warn); }
-  .badge.done { opacity: .65; }
   a { color: var(--accent); }
   .empty { color: var(--muted); text-align: center; padding: 2.5rem 1rem; }
+
+  details.add { background: var(--card); border: 1px solid var(--line); border-radius: .7rem; margin: 1rem 0 .6rem; }
+  details.add summary { padding: .75rem 1rem; cursor: pointer; font-weight: 600; }
+  details.add .body { padding: 0 1rem 1rem; display: grid; gap: .6rem;
+                      grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); align-items: end; }
+  .field { display: flex; flex-direction: column; gap: .25rem; }
+  .field label { font-size: .8rem; color: var(--muted); }
+  .field input, .field select { width: 100%; }
+  .msg { grid-column: 1 / -1; font-size: .85rem; color: var(--bad); }
   footer { color: var(--muted); font-size: .8rem; margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; }
 </style>
 </head>
@@ -71,27 +78,95 @@
     <span class="dot" id="dot"></span>
     <h1>Paketbote</h1>
     <span class="spacer"></span>
-    <button id="poll">Jetzt abrufen</button>
-    <a class="btn" href="browser/" target="_blank" rel="noopener">Browser öffnen</a>
+    <button id="poll"></button>
+    <a class="btn" id="browserLink" href="browser/" target="_blank" rel="noopener"></a>
   </header>
 
   <div id="alerts"></div>
   <div class="stats" id="stats"></div>
-  <div id="ships"></div>
 
+  <details class="add" id="addBox">
+    <summary id="addSummary"></summary>
+    <div class="body">
+      <div class="field"><label for="code"></label><input id="code" autocomplete="off" inputmode="latin"></div>
+      <div class="field"><label for="carrier"></label><select id="carrier"></select></div>
+      <div class="field"><label for="title"></label><input id="title" autocomplete="off"></div>
+      <div class="field"><label for="recipient"></label><input id="recipient" autocomplete="off"></div>
+      <div class="field"><label>&nbsp;</label><button class="primary" id="addBtn"></button></div>
+      <div class="msg" id="addMsg"></div>
+    </div>
+  </details>
+
+  <div id="ships"></div>
   <footer id="foot"></footer>
 </div>
 
 <script>
-const STATE_LABEL = {
-  IDLE: "Wartet", PENDING: "Heute erwartet", WINDOW: "Im Zustellfenster",
-  APPROACHING: "Kommt näher", IMMINENT: "Gleich da", DELIVERED: "Zugestellt",
+const STRINGS = {
+  de: {
+    poll: "Jetzt abrufen", polling: "Angefragt…", browser: "Browser öffnen",
+    active: "Aktive Pakete", today: "Heute erwartet", stops: "Nächste Stopps",
+    lastPoll: "Letzter Abruf", never: "nie", justNow: "gerade eben",
+    minsAgo: (n) => `vor ${n} min`, hoursAgo: (n) => `vor ${n} h`, daysAgo: (n) => `vor ${n} Tagen`,
+    empty: "Nichts unterwegs.", addTitle: "Sendung manuell hinzufügen",
+    code: "Sendungsnummer", carrier: "Zusteller", title: "Bezeichnung (optional)",
+    recipient: "Empfänger (optional)", add: "Hinzufügen", adding: "Wird angelegt…",
+    remove: "Entfernen", removeConfirm: "Diese Sendung entfernen?",
+    errCode: "Bitte eine Sendungsnummer eingeben.", errCarrier: "Bitte einen Zusteller wählen.",
+    errGeneric: "Konnte nicht gespeichert werden.",
+    loginTitle: "Amazon verlangt eine Anmeldung.",
+    loginBody: "Im Browser erledigen, danach läuft es von selbst weiter.",
+    throttledTitle: "Tageslimit erreicht.", throttledBody: "Bis Mitternacht wird nicht mehr abgerufen.",
+    selectorsTitle: "Selektoren greifen nicht.",
+    selectorsBody: "Amazon hat vermutlich das Markup geändert — ein Update ist fällig.",
+    openAmazon: "Bei Amazon ansehen", track: "Sendung verfolgen", manual: "manuell",
+    version: "Version", amazonCalls: "Amazon-Abrufe heute", dhlCalls: "DHL-Abrufe heute",
+    llmOff: "LLM-Fallback: aus", today0: "heute", tomorrow: "morgen",
+    states: { IDLE: "Wartet", PENDING: "Heute erwartet", WINDOW: "Im Zustellfenster",
+              APPROACHING: "Kommt näher", IMMINENT: "Gleich da", DELIVERED: "Zugestellt" },
+    statuses: { ordered: "Bestellt", shipped: "Versandt", out_for_delivery: "In Zustellung",
+                delivered: "Zugestellt", exception: "Problem", unknown: "Unbekannt" },
+    stopsLeft: (n) => `noch ${n} Stopps`,
+  },
+  en: {
+    poll: "Refresh now", polling: "Requested…", browser: "Open browser",
+    active: "Active parcels", today: "Due today", stops: "Stops away",
+    lastPoll: "Last poll", never: "never", justNow: "just now",
+    minsAgo: (n) => `${n} min ago`, hoursAgo: (n) => `${n} h ago`, daysAgo: (n) => `${n} days ago`,
+    empty: "Nothing on its way.", addTitle: "Add a shipment manually",
+    code: "Tracking number", carrier: "Carrier", title: "Label (optional)",
+    recipient: "Recipient (optional)", add: "Add", adding: "Adding…",
+    remove: "Remove", removeConfirm: "Remove this shipment?",
+    errCode: "Please enter a tracking number.", errCarrier: "Please pick a carrier.",
+    errGeneric: "Could not be saved.",
+    loginTitle: "Amazon wants you to sign in.",
+    loginBody: "Do it in the browser; everything continues by itself afterwards.",
+    throttledTitle: "Daily limit reached.", throttledBody: "No further polling until midnight.",
+    selectorsTitle: "Selectors no longer match.",
+    selectorsBody: "Amazon has probably changed its markup — an update is due.",
+    openAmazon: "View on Amazon", track: "Track shipment", manual: "manual",
+    version: "Version", amazonCalls: "Amazon calls today", dhlCalls: "DHL calls today",
+    llmOff: "LLM fallback: off", today0: "today", tomorrow: "tomorrow",
+    states: { IDLE: "Waiting", PENDING: "Due today", WINDOW: "In delivery window",
+              APPROACHING: "Getting close", IMMINENT: "Almost there", DELIVERED: "Delivered" },
+    statuses: { ordered: "Ordered", shipped: "Shipped", out_for_delivery: "Out for delivery",
+                delivered: "Delivered", exception: "Problem", unknown: "Unknown" },
+    stopsLeft: (n) => `${n} stops away`,
+  },
 };
-const STATUS_LABEL = {
-  ordered: "Bestellt", shipped: "Versandt", out_for_delivery: "In Zustellung",
-  delivered: "Zugestellt", exception: "Problem", unknown: "Unbekannt",
-};
+
+let L = STRINGS.de;
 const URGENT = new Set(["IMMINENT", "APPROACHING"]);
+let carriersLoaded = false;
+
+function pickLanguage(configured) {
+  if (configured && STRINGS[configured]) return STRINGS[configured];
+  const browser = (navigator.language || "de").slice(0, 2).toLowerCase();
+  return STRINGS[browser] || STRINGS.de;
+}
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
 
 const fmtDate = (iso) => {
   if (!iso) return null;
@@ -99,97 +174,95 @@ const fmtDate = (iso) => {
   if (Number.isNaN(d.getTime())) return iso;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const days = Math.round((d - today) / 86400000);
-  if (days === 0) return "heute";
-  if (days === 1) return "morgen";
-  return d.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" });
+  if (days === 0) return L.today0;
+  if (days === 1) return L.tomorrow;
+  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 };
 const fmtAgo = (iso) => {
-  if (!iso) return "nie";
+  if (!iso) return L.never;
   const mins = Math.round((Date.now() - new Date(iso)) / 60000);
-  if (!Number.isFinite(mins)) return "unbekannt";
-  if (mins < 1) return "gerade eben";
-  if (mins < 60) return `vor ${mins} min`;
+  if (!Number.isFinite(mins)) return L.never;
+  if (mins < 1) return L.justNow;
+  if (mins < 60) return L.minsAgo(mins);
   const h = Math.round(mins / 60);
-  return h < 24 ? `vor ${h} h` : `vor ${Math.round(h / 24)} Tagen`;
+  return h < 24 ? L.hoursAgo(h) : L.daysAgo(Math.round(h / 24));
 };
-const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
-const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function applyStaticLabels(carriers) {
+  document.getElementById("poll").textContent = L.poll;
+  document.getElementById("browserLink").textContent = L.browser;
+  document.getElementById("addSummary").textContent = L.addTitle;
+  document.querySelector('label[for="code"]').textContent = L.code;
+  document.querySelector('label[for="carrier"]').textContent = L.carrier;
+  document.querySelector('label[for="title"]').textContent = L.title;
+  document.querySelector('label[for="recipient"]').textContent = L.recipient;
+  document.getElementById("addBtn").textContent = L.add;
+  if (!carriersLoaded && carriers && carriers.length) {
+    document.getElementById("carrier").innerHTML = carriers
+      .map((c) => `<option value="${esc(c.key)}">${esc(c.name)}${c.automatic ? " ✓" : ""}</option>`)
+      .join("");
+    carriersLoaded = true;
+  }
+}
 
 function renderAlerts(status) {
   const box = document.getElementById("alerts");
   box.innerHTML = "";
   if (status.login_erforderlich) {
-    box.append(el(`<div class="alert bad">
-      <strong>Amazon verlangt eine Anmeldung.</strong>
-      <span>Im Browser erledigen, danach läuft es von selbst weiter.</span>
-      <span class="spacer"></span>
-      <a class="btn" href="browser/" target="_blank" rel="noopener">Browser öffnen</a></div>`));
+    box.append(el(`<div class="alert bad"><strong>${esc(L.loginTitle)}</strong><span>${esc(L.loginBody)}</span>
+      <span class="spacer"></span><a class="btn" href="browser/" target="_blank" rel="noopener">${esc(L.browser)}</a></div>`));
   }
   if (status.gedrosselt) {
-    box.append(el(`<div class="alert warn"><strong>Tageslimit erreicht.</strong>
-      <span>Bis Mitternacht wird nicht mehr abgerufen.</span></div>`));
+    box.append(el(`<div class="alert warn"><strong>${esc(L.throttledTitle)}</strong><span>${esc(L.throttledBody)}</span></div>`));
   }
   if (status.selektoren_defekt) {
-    box.append(el(`<div class="alert warn"><strong>Selektoren greifen nicht.</strong>
-      <span>Amazon hat vermutlich das Markup geändert — ein Update ist fällig.</span></div>`));
+    box.append(el(`<div class="alert warn"><strong>${esc(L.selectorsTitle)}</strong><span>${esc(L.selectorsBody)}</span></div>`));
   }
 }
 
 function renderStats(data) {
   const s = data.status || {};
   const cards = [
-    ["Aktive Pakete", data.counts.active],
-    ["Heute erwartet", s.pakete_heute ?? "–"],
-    ["Nächste Stopps", s.naechste_stopps ?? "–"],
-    ["Letzter Abruf", fmtAgo(s.letzter_abruf)],
+    [L.active, data.counts.active], [L.today, s.pakete_heute ?? "–"],
+    [L.stops, s.naechste_stopps ?? "–"], [L.lastPoll, fmtAgo(s.letzter_abruf)],
   ];
   document.getElementById("stats").innerHTML = cards
-    .map(([k, v]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`)
-    .join("");
+    .map(([k, v]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`).join("");
 }
 
 function renderShipments(data) {
   const box = document.getElementById("ships");
   const list = data.shipments.filter((s) => s.state !== "DELIVERED");
-  if (!list.length) {
-    box.innerHTML = `<div class="empty">Nichts unterwegs.</div>`;
-    return;
-  }
+  if (!list.length) { box.innerHTML = `<div class="empty">${esc(L.empty)}</div>`; return; }
   box.innerHTML = "";
   for (const s of list) {
     const cls = URGENT.has(s.state) ? "now" : s.state === "WINDOW" ? "soon" : "";
     const bits = [];
     const when = fmtDate(s.expected_date);
     if (when) bits.push(`<span>${esc(when)}</span>`);
-    if (s.window_start) {
-      bits.push(`<span>${esc(s.window_start.slice(0, 5))}–${esc((s.window_end || "").slice(0, 5))}</span>`);
-    }
-    if (s.stops_remaining !== null && s.stops_remaining !== undefined) {
-      bits.push(`<span>noch ${esc(s.stops_remaining)} Stopps</span>`);
-    }
+    if (s.window_start) bits.push(`<span>${esc(s.window_start.slice(0, 5))}–${esc((s.window_end || "").slice(0, 5))}</span>`);
+    if (s.stops_remaining !== null && s.stops_remaining !== undefined) bits.push(`<span>${esc(L.stopsLeft(s.stops_remaining))}</span>`);
     if (s.carrier) bits.push(`<span>${esc(s.carrier)}</span>`);
     if (s.recipient) bits.push(`<span class="badge">${esc(s.recipient)}</span>`);
-    if (s.tracking_url) bits.push(`<a href="${esc(s.tracking_url)}" target="_blank" rel="noopener">Bei Amazon ansehen</a>`);
+    if (s.source === "manual") bits.push(`<span class="badge">${esc(L.manual)}</span>`);
+    if (s.tracking_url) {
+      const label = s.source === "manual" ? L.track : L.openAmazon;
+      bits.push(`<a href="${esc(s.tracking_url)}" target="_blank" rel="noopener">${esc(label)}</a>`);
+    }
+    if (s.source === "manual") bits.push(`<button class="link" data-remove="${esc(s.shipment_id)}">${esc(L.remove)}</button>`);
 
     box.append(el(`<div class="ship">
-      <div class="top">
-        <span class="title">${esc(s.title || s.shipment_id)}</span>
-        <span class="badge ${cls}">${esc(STATE_LABEL[s.state] || s.state)}</span>
-      </div>
-      <div class="meta">
-        <span>${esc(STATUS_LABEL[s.status] || s.status)}</span>${bits.join("")}
-      </div></div>`));
+      <div class="top"><span class="title">${esc(s.title || s.shipment_id)}</span>
+        <span class="badge ${cls}">${esc(L.states[s.state] || s.state)}</span></div>
+      <div class="meta"><span>${esc(L.statuses[s.status] || s.status)}</span>${bits.join("")}</div></div>`));
   }
 }
 
 function renderFooter(data) {
   const b = data.budget;
-  const parts = [
-    `Version ${esc(data.version)}`,
-    `Amazon-Abrufe heute: ${b.amazon_used} / ${b.amazon_cap}`,
-  ];
-  if (data.features.dhl) parts.push(`DHL-Abrufe heute: ${b.dhl_used} / 250`);
-  if (!data.features.llm) parts.push("LLM-Fallback: aus");
+  const parts = [`${L.version} ${esc(data.version)}`, `${L.amazonCalls}: ${b.amazon_used} / ${b.amazon_cap}`];
+  if (data.features.dhl) parts.push(`${L.dhlCalls}: ${b.dhl_used} / 250`);
+  if (!data.features.llm) parts.push(L.llmOff);
   document.getElementById("foot").innerHTML = parts.map((p) => `<span>${p}</span>`).join("");
 }
 
@@ -198,7 +271,10 @@ async function refresh() {
     const res = await fetch("api/state", { cache: "no-store" });
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
+    L = pickLanguage(data.language === "auto" ? null : data.language);
+    document.documentElement.lang = L === STRINGS.en ? "en" : "de";
     document.getElementById("dot").classList.add("live");
+    applyStaticLabels(data.carriers);
     renderAlerts(data.status || {});
     renderStats(data);
     renderShipments(data);
@@ -210,13 +286,46 @@ async function refresh() {
 
 document.getElementById("poll").addEventListener("click", async (event) => {
   const button = event.currentTarget;
-  button.disabled = true;
-  button.textContent = "Angefragt…";
+  button.disabled = true; button.textContent = L.polling;
+  try { await fetch("api/poll", { method: "POST" }); }
+  finally { setTimeout(() => { button.disabled = false; button.textContent = L.poll; refresh(); }, 4000); }
+});
+
+document.getElementById("addBtn").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  const msg = document.getElementById("addMsg");
+  const code = document.getElementById("code").value.trim();
+  const carrier = document.getElementById("carrier").value;
+  msg.textContent = "";
+  if (!code) { msg.textContent = L.errCode; return; }
+  if (!carrier) { msg.textContent = L.errCarrier; return; }
+
+  button.disabled = true; button.textContent = L.adding;
   try {
-    await fetch("api/poll", { method: "POST" });
+    const res = await fetch("api/shipments", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        tracking_code: code, carrier,
+        title: document.getElementById("title").value.trim(),
+        recipient: document.getElementById("recipient").value.trim(),
+      }),
+    });
+    if (!res.ok) throw new Error(res.status);
+    for (const id of ["code", "title", "recipient"]) document.getElementById(id).value = "";
+    document.getElementById("addBox").open = false;
+    await refresh();
+  } catch (err) {
+    msg.textContent = L.errGeneric;
   } finally {
-    setTimeout(() => { button.disabled = false; button.textContent = "Jetzt abrufen"; refresh(); }, 4000);
+    button.disabled = false; button.textContent = L.add;
   }
+});
+
+document.getElementById("ships").addEventListener("click", async (event) => {
+  const id = event.target?.dataset?.remove;
+  if (!id || !confirm(L.removeConfirm)) return;
+  await fetch(`api/shipments/${encodeURIComponent(id)}`, { method: "DELETE" });
+  refresh();
 });
 
 refresh();

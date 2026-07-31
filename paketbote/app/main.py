@@ -23,7 +23,13 @@ from .carriers import dhl as dhl_carrier
 from .carriers.dhl import DhlTracker
 from .config import Config
 from .extractor import SOURCE_CSS, SOURCE_LLM, extract
-from .models import STATE_DELIVERED, STATUS_DELIVERED, Shipment, ShipmentFacts
+from .models import (
+    SOURCE_AMAZON,
+    STATE_DELIVERED,
+    STATUS_DELIVERED,
+    Shipment,
+    ShipmentFacts,
+)
 from .mqtt import Publisher
 from .scheduler import next_interval_minutes, state_for, summarise
 from .scraper import Scraper
@@ -140,11 +146,14 @@ class Paketbote:
             overview = scraper.read_overview()
             self._store.count_requests(1)
 
-            known = {s.shipment_id: s for s in self._store.all_shipments()}
+            stored = self._store.all_shipments()
+            known = {s.shipment_id: s for s in stored}
             seen = {s.shipment_id for s in overview.shipments}
 
             # Orders drop off the list once they age out of Amazon's window.
-            for shipment_id in set(known) - seen:
+            # Manually added parcels were never on it and must survive.
+            from_amazon = {s.shipment_id for s in stored if s.source == SOURCE_AMAZON}
+            for shipment_id in from_amazon - seen:
                 LOGGER.info("%s is no longer listed; removing it", shipment_id)
                 self._publisher.retire_shipment(shipment_id)
                 self._store.forget(shipment_id)
@@ -190,7 +199,30 @@ class Paketbote:
                 self._publisher.retire_shipment(stored.shipment_id)
                 self._store.forget(stored.shipment_id)
 
+            self._refresh_manual(now)
             self._last_sources = sources
+
+    def _refresh_manual(self, now: datetime) -> None:
+        """Parcels added by hand have no source page — only a carrier."""
+        for shipment in self._store.all_shipments():
+            if shipment.source == SOURCE_AMAZON or not shipment.tracking_code:
+                continue
+
+            before = shipment.status
+            self._ask_carrier(shipment)
+            shipment.state = state_for(shipment, now, self._config)
+            shipment.last_seen = now
+
+            if shipment.status == STATUS_DELIVERED and before != STATUS_DELIVERED:
+                LOGGER.info("%s was delivered; removing it", shipment.shipment_id)
+                self._publisher.publish_shipment(shipment)
+                self._publisher.retire_shipment(shipment.shipment_id)
+                self._store.forget(shipment.shipment_id)
+                continue
+
+            self._store.save(shipment)
+            self._publisher.announce_shipment(shipment)
+            self._publisher.publish_shipment(shipment)
 
     def _read(self, scraper: Scraper, shipment: Shipment, today: date) -> ShipmentFacts:
         def reader(page, text):
@@ -293,6 +325,14 @@ class Paketbote:
 
     def _publish(self, now: datetime) -> None:
         shipments = self._store.all_shipments()
+
+        # Anything deleted in the interface is still announced to Home
+        # Assistant until it is taken back out.
+        current = {s.shipment_id for s in shipments}
+        for orphan in self._publisher.announced - current:
+            LOGGER.info("%s is gone from the database; retiring it", orphan)
+            self._publisher.retire_shipment(orphan)
+
         summary = summarise(shipments, now, self._config)
 
         summary.update(

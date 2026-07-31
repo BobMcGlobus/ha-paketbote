@@ -26,7 +26,7 @@ from .browser import (
     LoginRequired,
 )
 from .config import LOG_LEVELS, Config
-from .models import OrderOverview, Shipment, TrackingPage, shorten
+from .models import OrderOverview, Shipment, TrackingPage, sanitise_id, shorten
 
 LOGGER = logging.getLogger(__name__)
 
@@ -161,11 +161,6 @@ _COLLECT_TRACKING_LINKS_JS = """
   return out;
 }
 """
-
-
-def sanitise_id(value: str) -> str:
-    """Reduce an identifier to something safe for MQTT topics and entity ids."""
-    return re.sub(r"[^A-Za-z0-9_-]+", "_", value).strip("_")
 
 
 def _query(url: str) -> dict[str, str]:

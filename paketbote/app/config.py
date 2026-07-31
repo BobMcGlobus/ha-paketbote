@@ -50,6 +50,7 @@ class Config:
     dhl_api_key: str = ""
     dump_on_start: bool = False
     developer_mode: bool = False
+    language: str = "auto"
     log_level: str = "info"
 
     @property

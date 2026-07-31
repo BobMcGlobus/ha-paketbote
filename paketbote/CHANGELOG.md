@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.0
+
+- **Sendungen manuell hinzufügen.** Sendungsnummer und Zusteller genügen; bei
+  DHL wird der Status danach automatisch geholt, bei DPD, Hermes, GLS, UPS,
+  FedEx und Deutscher Post entsteht ein Link zur Sendungsverfolgung. Manuelle
+  Einträge überstehen Abrufzyklen, in denen keine Quelle sie sieht, und lassen
+  sich in der Oberfläche wieder entfernen
+- **Mehrsprachigkeit vorbereitet.** Oberfläche auf Deutsch und Englisch, neue
+  Option `language` (`auto`, `de`, `en`); `auto` folgt dem Browser. Die
+  Add-on-Optionen sind in beiden Sprachen beschriftet
+- **Behoben:** „Browser öffnen" landete auf einem Verzeichnislisting — beim
+  Umbau auf die Oberfläche war der Redirect auf die noVNC-Seite verlorengegangen
+- Zustandsdatenbank läuft im WAL-Modus, damit Oberfläche und Abrufschleife
+  gleichzeitig zugreifen können
+
 ## 0.8.0
 
 - **Eigene Oberfläche im Add-on-Panel.** Sendungsübersicht mit Empfänger,
