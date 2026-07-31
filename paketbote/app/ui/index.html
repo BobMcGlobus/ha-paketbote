@@ -81,6 +81,16 @@
   .body .when .clock { font-weight: 560; opacity: .85; }
   .body .title { font-weight: 520; line-height: 1.35; overflow-wrap: anywhere;
                  color: var(--muted); margin-top: .05rem; }
+  .items { margin-top: .5rem; display: flex; flex-direction: column; gap: .4rem; }
+  .item { display: flex; gap: .55rem; align-items: center; }
+  .item-blank { width: 2.1rem; height: 2.1rem; border-radius: .35rem; background: var(--chip); flex: none; }
+  .item img { width: 2.1rem; height: 2.1rem; border-radius: .35rem; object-fit: cover;
+              background: var(--chip); flex: none; }
+  .item .name { font-size: .88rem; line-height: 1.3; overflow-wrap: anywhere; }
+  .ship { position: relative; }
+  .carrierMark { position: absolute; top: .7rem; right: .7rem; font-size: .66rem;
+                 font-weight: 800; letter-spacing: .04em; padding: .12rem .4rem;
+                 border-radius: .3rem; color: #fff; }
   .body .meta { color: var(--muted); font-size: .84rem; margin-top: .3rem;
                 display: flex; gap: .3rem .8rem; flex-wrap: wrap; align-items: center; }
   .chips { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .75rem; }
@@ -222,6 +232,7 @@ const T = {
     recipient: "Empfänger (optional)", addBtn: "Hinzufügen", adding: "Wird angelegt…",
     edit: "Bearbeiten", save: "Speichern", cancel: "Abbrechen",
     remove: "Entfernen", removeConfirm: "Diese Sendung entfernen?",
+    restore: "Zurückholen",
     errCode: "Bitte eine Sendungsnummer eingeben.", errGeneric: "Konnte nicht gespeichert werden.",
     status: "Status", selectors: "Selektoren", actions: "Aktionen",
     options: "Einstellungen", save: "Speichern", saving: "Wird gespeichert…", saved: "Gespeichert.",
@@ -279,6 +290,7 @@ const T = {
     recipient: "Recipient (optional)", addBtn: "Add", adding: "Adding…",
     edit: "Edit", save: "Save", cancel: "Cancel",
     remove: "Remove", removeConfirm: "Remove this shipment?",
+    restore: "Restore",
     errCode: "Please enter a tracking number.", errGeneric: "Could not be saved.",
     status: "Status", selectors: "Selectors", actions: "Actions",
     options: "Settings", save: "Save", saving: "Saving…", saved: "Saved.",
@@ -339,6 +351,24 @@ const PROGRESS = { ordered: .25, shipped: .5, out_for_delivery: .8, delivered: 1
 const GLYPH = { ordered: "box", shipped: "truck", out_for_delivery: "truck", delivered: "check", exception: "alert", unknown: "box" };
 const URGENT = new Set(["IMMINENT", "APPROACHING"]);
 
+// Drawn here rather than shipping the carriers' logo files: brand colours and
+// a wordmark say the same thing without copying anyone's artwork.
+const CARRIER_MARK = {
+  DHL: { bg: "#d40511", fg: "#ffcc00", text: "DHL" },
+  AMZL: { bg: "#232f3e", fg: "#ff9900", text: "AMZN" },
+  DPD: { bg: "#dc0032", fg: "#ffffff", text: "DPD" },
+  Hermes: { bg: "#0091d2", fg: "#ffffff", text: "HERMES" },
+  GLS: { bg: "#06316d", fg: "#ffd200", text: "GLS" },
+  UPS: { bg: "#351c15", fg: "#ffb500", text: "UPS" },
+  FedEx: { bg: "#4d148c", fg: "#ff6600", text: "FEDEX" },
+  "Deutsche Post": { bg: "#ffcc00", fg: "#d40511", text: "POST" },
+};
+const carrierMark = (carrier) => {
+  const mark = CARRIER_MARK[carrier];
+  if (!mark) return "";
+  return `<span class="carrierMark" style="background:${mark.bg};color:${mark.fg}">${esc(mark.text)}</span>`;
+};
+
 let L = T.de;
 let page = "parcels";
 let carriersLoaded = false;
@@ -395,6 +425,7 @@ function shipCard(s, { editable = false, delivered = false } = {}) {
   if (s.recipient) bits.push(`<span class="badge">${esc(s.recipient)}</span>`);
   if (s.source === "manual") bits.push(`<span class="badge">${esc(L.manual)}</span>`);
   if (s.tracking_url) bits.push(`<a href="${esc(s.tracking_url)}" target="_blank" rel="noopener">${esc(s.source === "manual" ? L.track : L.openAmazon)}</a>`);
+  if (delivered) bits.push(`<button class="link" data-restore="${esc(s.shipment_id)}">${esc(L.restore)}</button>`);
   if (editable && s.source === "manual") {
     bits.push(`<button class="link" data-edit="${esc(s.shipment_id)}">${esc(L.edit)}</button>`);
     bits.push(`<button class="link" data-remove="${esc(s.shipment_id)}">${esc(L.remove)}</button>`);
@@ -411,9 +442,16 @@ function shipCard(s, { editable = false, delivered = false } = {}) {
   }
 
   const urgent = URGENT.has(s.state) || s.state === "WINDOW";
-  return el(`<div class="ship">${ring(s)}<div class="body">
+  const items = (s.items || []).length
+    ? `<div class="items">${s.items.map((i) => `<div class="item">
+        ${i.image ? `<img src="${esc(i.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+                  : `<span class="item-blank"></span>`}
+        <span class="name">${esc(i.title)}</span></div>`).join("")}</div>`
+    : `<div class="title">${esc(s.title || s.shipment_id)}</div>`;
+
+  return el(`<div class="ship">${carrierMark(s.carrier)}${ring(s)}<div class="body">
     <div class="when" style="color:${urgent ? colour : "inherit"}">${headline(s, delivered)}</div>
-    <div class="title">${esc(s.title || s.shipment_id)}</div>
+    ${items}
     <div class="meta"><span class="badge">${esc(L.states[s.state] || s.state)}</span>${bits.join("")}</div>
     </div></div>`);
 }
@@ -636,6 +674,13 @@ document.addEventListener("click", async (event) => {
       body: JSON.stringify({ title: $("editTitle").value, recipient: $("editRecipient").value }),
     });
     editing = null; refresh(); return;
+  }
+
+  const restore = event.target.dataset?.restore;
+  if (restore) {
+    await fetch(`api/shipments/${encodeURIComponent(restore)}/restore`, { method: "POST" });
+    refresh();
+    return;
   }
 
   const remove = event.target.dataset?.remove;

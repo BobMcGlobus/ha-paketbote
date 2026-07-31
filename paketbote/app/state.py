@@ -7,6 +7,7 @@ writes without inventing a file format.
 
 from __future__ import annotations
 
+import json
 import logging
 import sqlite3
 from datetime import date, datetime, time
@@ -40,7 +41,8 @@ CREATE TABLE IF NOT EXISTS shipments (
     last_seen       TEXT,
     delivered_at    TEXT,
     missed          INTEGER NOT NULL DEFAULT 0,
-    carrier_checked_at TEXT
+    carrier_checked_at TEXT,
+    items           TEXT
 );
 
 CREATE TABLE IF NOT EXISTS field_health (
@@ -90,6 +92,14 @@ def _as_date(value: str | None) -> date | None:
     return date.fromisoformat(value) if value else None
 
 
+def _as_items(value: str | None) -> list[dict]:
+    try:
+        items = json.loads(value) if value else []
+    except ValueError:
+        return []
+    return [i for i in items if isinstance(i, dict)]
+
+
 def _as_datetime(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value) if value else None
 
@@ -120,7 +130,7 @@ class Store:
         for column, kind in (("recipient", "TEXT"), ("delivery_address", "TEXT"),
                              ("tracking_code", "TEXT"), ("source", "TEXT"),
                              ("delivered_at", "TEXT"), ("missed", "INTEGER DEFAULT 0"),
-                             ("carrier_checked_at", "TEXT")):
+                             ("carrier_checked_at", "TEXT"), ("items", "TEXT")):
             if column not in existing:
                 self._db.execute(f"ALTER TABLE shipments ADD COLUMN {column} {kind}")
                 LOGGER.info("Added column %s to the shipments table", column)
@@ -136,8 +146,8 @@ class Store:
             INSERT INTO shipments (shipment_id, order_id, tracking_url, title, recipient,
                                    delivery_address, carrier, tracking_code, source,
                                    status, stops_remaining, window_start, window_end,
-                                   expected_date, state, delivered_at, missed, carrier_checked_at, first_seen, last_seen)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(
+                                   expected_date, state, delivered_at, missed, carrier_checked_at, items, first_seen, last_seen)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(
                 (SELECT first_seen FROM shipments WHERE shipment_id = ?), ?), ?)
             ON CONFLICT(shipment_id) DO UPDATE SET
                 order_id=excluded.order_id,
@@ -157,6 +167,7 @@ class Store:
                 delivered_at=excluded.delivered_at,
                 missed=excluded.missed,
                 carrier_checked_at=excluded.carrier_checked_at,
+                items=excluded.items,
                 last_seen=excluded.last_seen
             """,
             (
@@ -178,6 +189,7 @@ class Store:
                 _iso(shipment.delivered_at),
                 shipment.missed,
                 _iso(shipment.carrier_checked_at),
+                json.dumps(shipment.items, ensure_ascii=False),
                 shipment.shipment_id,
                 _iso(shipment.last_seen or datetime.now()),
                 _iso(shipment.last_seen or datetime.now()),
@@ -213,6 +225,7 @@ class Store:
             delivered_at=_as_datetime(row["delivered_at"]),
             missed=int(row["missed"] or 0),
             carrier_checked_at=_as_datetime(row["carrier_checked_at"]),
+            items=_as_items(row["items"]),
         )
 
     # -- who lives where ---------------------------------------------------

@@ -114,6 +114,20 @@ def parse_shipment(payload: dict) -> CarrierUpdate:
     )
 
 
+def _reason(response) -> str:
+    """Whatever DHL put in the body, in a form fit for one line of interface."""
+    try:
+        payload = response.json()
+    except ValueError:
+        return (response.text or "no detail")[:160]
+    if isinstance(payload, dict):
+        parts = [str(payload.get(key)) for key in ("title", "detail", "message", "error")
+                 if payload.get(key)]
+        if parts:
+            return " / ".join(parts)[:160]
+    return str(payload)[:160]
+
+
 class DhlTracker:
     """Asks DHL, and keeps to their rate limits."""
 
@@ -165,12 +179,14 @@ class DhlTracker:
                 self._store.count_carrier_request("dhl")
 
         if response.status_code in (401, 403):
-            return False, f"DHL rejected the key (HTTP {response.status_code})"
+            # DHL says why in the body; throwing that away is what made the
+            # last round of this guesswork instead of diagnosis.
+            return False, f"HTTP {response.status_code} — {_reason(response)}"
         if response.status_code == 429:
             return True, "key accepted, but the daily limit is reached (HTTP 429)"
         if response.status_code in (200, 400, 404):
             return True, f"key accepted (HTTP {response.status_code})"
-        return False, f"unexpected answer from DHL (HTTP {response.status_code})"
+        return False, f"HTTP {response.status_code} — {_reason(response)}"
 
     def fetch(self, tracking_code: str, postal_code: str = "") -> CarrierUpdate:
         if not self.available:

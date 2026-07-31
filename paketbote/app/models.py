@@ -65,6 +65,8 @@ class Shipment:
     # living at different addresses, so this is what tells them apart.
     recipient: str = ""
     delivery_address: str = ""
+    # Every article in this parcel, with the thumbnail Amazon shows.
+    items: list[dict] = field(default_factory=list)
     # Visible text of this shipment's card on the order overview. This is the
     # cheap tier: it already carries the delivery date and status, so it — not
     # the expensive tracker page — decides whether a shipment is worth opening.

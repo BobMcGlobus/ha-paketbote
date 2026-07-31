@@ -24,7 +24,9 @@ from .people import normalise_name
 from .models import (
     SOURCE_MANUAL,
     STATE_DELIVERED,
+    STATE_IDLE,
     STATUS_DELIVERED,
+    STATUS_UNKNOWN,
     Shipment,
     sanitise_id,
     shorten,
@@ -73,6 +75,7 @@ def shipment_payload(shipment) -> dict:
         "delivered_at": shipment.delivered_at.isoformat() if shipment.delivered_at else None,
         "bucket": bucket_of(shipment),
         "recipient_key": normalise_name(shipment.recipient),
+        "items": shipment.items,
     }
 
 
@@ -272,6 +275,30 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
             store.close()
 
         LOGGER.info("Updated shipment %s", shipment_id)
+        return jsonify({"ok": True})
+
+    @app.post("/api/shipments/<shipment_id>/restore")
+    def restore_shipment(shipment_id: str):
+        """Put a wrongly archived parcel back into circulation.
+
+        Clearing the delivery stamp is enough: the next poll works the state
+        out again from what the source and the carrier say.
+        """
+        store = Store(db_path)
+        try:
+            found = {s.shipment_id: s for s in store.all_shipments()}.get(shipment_id)
+            if found is None:
+                return jsonify({"ok": False, "error": "not_found"}), 404
+            found.delivered_at = None
+            found.missed = 0
+            found.status = STATUS_UNKNOWN
+            found.state = STATE_IDLE
+            store.save(found)
+        finally:
+            store.close()
+
+        LOGGER.info("Restored %s from the archive", shipment_id)
+        _request_poll()
         return jsonify({"ok": True})
 
     @app.delete("/api/shipments/<shipment_id>")

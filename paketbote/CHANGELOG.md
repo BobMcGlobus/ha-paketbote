@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.14.0
+
+- **Alle Artikel einer Sendung untereinander**, mit Produktbild aus Amazons
+  CDN. Bilder werden nicht gespeichert, sondern direkt geladen, und ohne
+  Referrer angefragt
+- **Zusteller-Plakette** oben rechts auf jeder Karte, in den Hausfarben von
+  DHL, Amazon, DPD, Hermes, GLS, UPS, FedEx und Deutscher Post. Selbst
+  gezeichnete Wortmarken statt fremder Logodateien
+- **Zurückholen** für Sendungen im Archiv: setzt den Zustellzeitpunkt zurück,
+  danach ermittelt der nächste Abruf den Zustand neu
+- Der DHL-Schlüsseltest nennt jetzt **DHLs eigene Fehlermeldung**, nicht nur
+  den Status — bei einem 401 steht dort, was DHL bemängelt
+
 ## 0.13.1
 
 - **Der DHL-Testknopf meldete gültige Schlüssel als abgelehnt.** Er fragte mit

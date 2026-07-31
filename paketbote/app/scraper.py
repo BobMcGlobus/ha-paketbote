@@ -64,6 +64,10 @@ CARD_WALK_MAX_DEPTH = 20
 # header that sits above it.
 CARD_WALK_EXTRA_LEVELS = 3
 
+# Enough for a normal multi-item order; a card that lists thirty goods is a
+# sign the boundary slipped, not something worth rendering.
+MAX_ITEMS_PER_SHIPMENT = 12
+
 # Two tracker pages back to back look like a script; the plan asks for a pause.
 MIN_PAUSE_SECONDS = 2.0
 MAX_PAUSE_SECONDS = 5.0
@@ -100,6 +104,29 @@ _COLLECT_TRACKING_LINKS_JS = """
   // Amazon links each product twice: the thumbnail first, then the title.
   // Taking querySelector's first hit yields the image link, whose textContent
   // is empty -- which is how every shipment ended up untitled.
+  // The image and the title are two separate links to the same product, so
+  // they are matched by the ASIN in the href.
+  const asinOf = (href) => {
+    const match = (href || '').match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
+    return match ? match[1] : null;
+  };
+
+  const itemsIn = (el) => {
+    const titles = new Map();
+    const images = new Map();
+    for (const link of el.querySelectorAll(PRODUCT)) {
+      const asin = asinOf(link.getAttribute('href'));
+      if (!asin) continue;
+      const text = (link.textContent || '').trim();
+      if (text.length > 1 && !titles.has(asin)) titles.set(asin, text);
+      const img = link.querySelector('img');
+      if (img && img.src && !images.has(asin)) images.set(asin, img.src);
+    }
+    return [...titles].map(([asin, title]) => ({
+      asin, title, image: images.get(asin) || '',
+    }));
+  };
+
   const productName = (el) => {
     for (const link of el.querySelectorAll(PRODUCT)) {
       const text = (link.textContent || '').trim();
@@ -155,8 +182,12 @@ _COLLECT_TRACKING_LINKS_JS = """
       }
     }
 
+    // Items come from the narrower block found by climbing: one order can
+    // ship as several parcels, and the order card holds all of their goods.
+    const items = itemsIn(card || orderCard || anchor);
+
     const cardText = orderCard ? (orderCard.innerText || '').slice(0, cardTextLimit) : '';
-    out.push({ href, title, cardText, recipient });
+    out.push({ href, title, cardText, recipient, items });
   }
   return out;
 }
@@ -316,6 +347,14 @@ class Scraper:
                 tracking_url=entry["href"],
                 title=shorten(entry.get("title", "")),
                 recipient=(entry.get("recipient") or "").strip(),
+                items=[
+                    {
+                        "title": shorten(item.get("title", ""), 90),
+                        "image": str(item.get("image") or ""),
+                    }
+                    for item in (entry.get("items") or [])
+                    if item.get("title")
+                ][:MAX_ITEMS_PER_SHIPMENT],
                 overview_text=normalise_text(entry.get("cardText", "")),
                 last_seen=datetime.now(),
             )
