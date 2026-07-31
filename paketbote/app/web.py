@@ -180,26 +180,18 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
 
     @app.post("/api/test/dhl")
     def test_dhl():
-        """Ask DHL about a number that cannot exist.
-
-        A 404 proves the key was accepted; only the key itself is under test,
-        so an unknown shipment is exactly the right answer.
-        """
+        """Say plainly whether DHL accepts the configured key."""
         config = Config.load()
         if not config.dhl_api_key:
             return jsonify({"ok": False, "reason": "no_key"})
 
         store = Store(db_path)
         try:
-            tracker = DhlTracker(config.dhl_api_key, store)
-            tracker.fetch("00000000000000000000")
-        except NotFound:
-            return jsonify({"ok": True, "reason": "accepted"})
-        except CarrierError as err:
-            return jsonify({"ok": False, "reason": str(err)})
+            ok, detail = DhlTracker(config.dhl_api_key, store).probe()
         finally:
             store.close()
-        return jsonify({"ok": True, "reason": "accepted"})
+        LOGGER.info("DHL key test: %s (%s)", "ok" if ok else "failed", detail)
+        return jsonify({"ok": ok, "reason": detail})
 
     @app.post("/api/settings/reset")
     def reset_settings():

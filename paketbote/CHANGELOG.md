@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.13.1
+
+- **Der DHL-Testknopf meldete gültige Schlüssel als abgelehnt.** Er fragte mit
+  einer syntaktisch ungültigen Sendungsnummer, worauf DHL mit einem Formfehler
+  antwortet — und alles außer „nicht gefunden" galt als Ablehnung. Jetzt zählt
+  nur noch eine echte Zurückweisung (401/403) als Fehler; eine Beschwerde über
+  die Nummer beweist im Gegenteil, dass der Schlüssel akzeptiert wurde
+- Die Meldung nennt immer den HTTP-Status, damit der nächste Fall nicht wieder
+  geraten werden muss
+- Leerzeichen und Zeilenumbrüche um einen eingefügten Schlüssel werden entfernt
+
 ## 0.13.0
 
 - **Deutlich ruhigerer Standardrhythmus:** untätig alle 3 h statt 1 h, heute

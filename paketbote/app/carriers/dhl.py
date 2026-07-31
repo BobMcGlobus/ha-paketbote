@@ -120,7 +120,8 @@ class DhlTracker:
     name = NAME
 
     def __init__(self, api_key: str, store=None) -> None:
-        self._api_key = api_key
+        # A key pasted from a portal often carries whitespace.
+        self._api_key = (api_key or "").strip()
         self._store = store
         self._last_call = 0.0
 
@@ -139,6 +140,37 @@ class DhlTracker:
             pause = MIN_SECONDS_BETWEEN_CALLS - elapsed
             LOGGER.debug("Holding %.1fs to stay inside DHL's rate limit", pause)
             time_module.sleep(pause)
+
+    def probe(self) -> tuple[bool, str]:
+        """Check whether DHL accepts the key, without interpreting a shipment.
+
+        Any answer other than "unauthorised" means the request got past the
+        gateway, so the key is good — including a complaint about the tracking
+        number, which is exactly what a made-up one should produce.
+        """
+        if not self.available:
+            return False, "no key configured"
+
+        try:
+            response = requests.get(
+                API_URL,
+                params={"trackingNumber": "00340434000000000000"},
+                headers={"DHL-API-Key": self._api_key},
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.RequestException as err:
+            return False, f"could not reach DHL: {err}"
+        finally:
+            if self._store is not None:
+                self._store.count_carrier_request("dhl")
+
+        if response.status_code in (401, 403):
+            return False, f"DHL rejected the key (HTTP {response.status_code})"
+        if response.status_code == 429:
+            return True, "key accepted, but the daily limit is reached (HTTP 429)"
+        if response.status_code in (200, 400, 404):
+            return True, f"key accepted (HTTP {response.status_code})"
+        return False, f"unexpected answer from DHL (HTTP {response.status_code})"
 
     def fetch(self, tracking_code: str, postal_code: str = "") -> CarrierUpdate:
         if not self.available:
@@ -172,8 +204,8 @@ class DhlTracker:
             raise NotFound(f"DHL does not know {tracking_code}")
         if response.status_code == 429:
             raise RateLimited("DHL replied 429; backing off")
-        if response.status_code == 401:
-            raise CarrierError("DHL rejected the API key")
+        if response.status_code in (401, 403):
+            raise CarrierError(f"DHL rejected the API key (HTTP {response.status_code})")
         if not response.ok:
             raise CarrierError(f"DHL replied {response.status_code}")
 

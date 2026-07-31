@@ -4,7 +4,7 @@ import unittest
 from datetime import date, time
 
 from app.carriers.base import NotFound
-from app.carriers.dhl import handles, parse_shipment
+from app.carriers.dhl import DhlTracker, handles, parse_shipment
 from app.models import (
     STATUS_DELIVERED,
     STATUS_EXCEPTION,
@@ -109,6 +109,46 @@ class TestEmptyResponse(unittest.TestCase):
     def test_missing_key_raises_not_found(self):
         with self.assertRaises(NotFound):
             parse_shipment({})
+
+
+class TestProbe(unittest.TestCase):
+    """The key test must not call a working key rejected."""
+
+    def _probe(self, status):
+        from unittest.mock import Mock, patch
+        with patch("app.carriers.dhl.requests.get", return_value=Mock(status_code=status)):
+            return DhlTracker("key").probe()
+
+    def test_a_complaint_about_the_number_still_proves_the_key(self):
+        # A made-up tracking number is meant to be refused; that refusal is
+        # the evidence the request got past the gateway.
+        for status in (200, 400, 404):
+            ok, detail = self._probe(status)
+            self.assertTrue(ok, f"HTTP {status}: {detail}")
+
+    def test_unauthorised_is_reported_as_such(self):
+        for status in (401, 403):
+            ok, detail = self._probe(status)
+            self.assertFalse(ok)
+            self.assertIn(str(status), detail)
+
+    def test_rate_limited_still_means_the_key_works(self):
+        ok, detail = self._probe(429)
+        self.assertTrue(ok)
+        self.assertIn("429", detail)
+
+    def test_anything_else_names_the_status(self):
+        ok, detail = self._probe(503)
+        self.assertFalse(ok)
+        self.assertIn("503", detail)
+
+    def test_without_a_key(self):
+        ok, detail = DhlTracker("").probe()
+        self.assertFalse(ok)
+        self.assertIn("no key", detail)
+
+    def test_whitespace_around_a_pasted_key_is_ignored(self):
+        self.assertTrue(DhlTracker("  abc\n").available)
 
 
 class TestHandles(unittest.TestCase):
