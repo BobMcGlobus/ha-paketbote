@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.0
+
+- **Eigene Oberfläche im Add-on-Panel.** Sendungsübersicht mit Empfänger,
+  Zustelldatum, Fenster, Stopps und Zusteller; Warnungen bei nötiger Anmeldung,
+  erreichtem Tageslimit oder nicht mehr greifenden Selektoren. Responsive,
+  hell/dunkel je nach System
+- **Jetzt abrufen** stößt einen Zyklus sofort an
+- **Browser öffnen** führt zum bisherigen Panel, jetzt unter `/browser/`
+- Die Oberfläche läuft als eigener Prozess und liest nur mit — ein Fehler dort
+  hält die Abrufschleife nicht an
+- **Neuer Sensor `sensor.paketbote_sendungen`**: Anzahl aktiver Sendungen als
+  Zustand, die vollständige Liste im Attribut `shipments`. Grundlage für die
+  Lovelace-Karte
+
 ## 0.7.0
 
 - **DHL-Anbindung über die offizielle API.** Meldet Amazon DHL als Zusteller

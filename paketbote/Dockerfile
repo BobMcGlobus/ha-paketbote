@@ -76,7 +76,8 @@ RUN set -eux; \
     done; \
     test -f /usr/share/novnc/vnc.html; \
     test -x /opt/venv/bin/python; \
-    /opt/venv/bin/python -c "import playwright, paho.mqtt.client, requests"
+    /opt/venv/bin/python -c "import playwright, paho.mqtt.client, requests, flask, waitress"; \
+    test -f /opt/paketbote/app/ui/index.html
 
 # Build arguments
 ARG BUILD_ARCH

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paketbote</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --line: #e3e5e9; --text: #16181d;
+    --muted: #6b7280; --accent: #5b57ff; --ok: #1a9f5a; --warn: #c77700;
+    --bad: #cf3232; --chip: #eef0f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --card: #1c1f25; --line: #2a2e37; --text: #e8eaed;
+      --muted: #9aa1ad; --accent: #8b87ff; --ok: #3fbe7c; --warn: #e0a13a;
+      --bad: #f06a6a; --chip: #262a32;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 2rem env(safe-area-inset-left);
+  }
+  .wrap { max-width: 60rem; margin: 0 auto; padding: 1rem; }
+  header { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  h1 { font-size: 1.35rem; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+  .dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.live { background: var(--ok); }
+  .spacer { flex: 1; }
+  button, .btn {
+    font: inherit; font-weight: 550; border: 1px solid var(--line); border-radius: .6rem;
+    padding: .5rem .9rem; background: var(--card); color: var(--text);
+    cursor: pointer; text-decoration: none; display: inline-block;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .55; cursor: default; }
+
+  .alert {
+    border-radius: .7rem; padding: .8rem 1rem; margin-bottom: .75rem;
+    display: flex; gap: .75rem; align-items: center; flex-wrap: wrap;
+    border: 1px solid transparent;
+  }
+  .alert.bad  { background: color-mix(in srgb, var(--bad) 14%, var(--card)); border-color: var(--bad); }
+  .alert.warn { background: color-mix(in srgb, var(--warn) 14%, var(--card)); border-color: var(--warn); }
+  .alert strong { font-weight: 650; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: .6rem; margin-bottom: 1.1rem; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: .7rem; padding: .7rem .85rem; }
+  .stat .v { font-size: 1.5rem; font-weight: 650; letter-spacing: -.02em; }
+  .stat .k { color: var(--muted); font-size: .8rem; }
+
+  .ship { background: var(--card); border: 1px solid var(--line); border-radius: .7rem; padding: .85rem 1rem; margin-bottom: .6rem; }
+  .ship .top { display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; }
+  .ship .title { font-weight: 600; flex: 1; min-width: 12rem; }
+  .ship .meta { color: var(--muted); font-size: .85rem; margin-top: .35rem;
+                display: flex; gap: .4rem .9rem; flex-wrap: wrap; align-items: center; }
+  .badge { font-size: .78rem; font-weight: 600; padding: .15rem .5rem; border-radius: .4rem; background: var(--chip); color: var(--text); white-space: nowrap; }
+  .badge.now  { background: color-mix(in srgb, var(--ok) 22%, var(--card)); color: var(--ok); }
+  .badge.soon { background: color-mix(in srgb, var(--warn) 22%, var(--card)); color: var(--warn); }
+  .badge.done { opacity: .65; }
+  a { color: var(--accent); }
+  .empty { color: var(--muted); text-align: center; padding: 2.5rem 1rem; }
+  footer { color: var(--muted); font-size: .8rem; margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="dot" id="dot"></span>
+    <h1>Paketbote</h1>
+    <span class="spacer"></span>
+    <button id="poll">Jetzt abrufen</button>
+    <a class="btn" href="browser/" target="_blank" rel="noopener">Browser öffnen</a>
+  </header>
+
+  <div id="alerts"></div>
+  <div class="stats" id="stats"></div>
+  <div id="ships"></div>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+const STATE_LABEL = {
+  IDLE: "Wartet", PENDING: "Heute erwartet", WINDOW: "Im Zustellfenster",
+  APPROACHING: "Kommt näher", IMMINENT: "Gleich da", DELIVERED: "Zugestellt",
+};
+const STATUS_LABEL = {
+  ordered: "Bestellt", shipped: "Versandt", out_for_delivery: "In Zustellung",
+  delivered: "Zugestellt", exception: "Problem", unknown: "Unbekannt",
+};
+const URGENT = new Set(["IMMINENT", "APPROACHING"]);
+
+const fmtDate = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return iso;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = Math.round((d - today) / 86400000);
+  if (days === 0) return "heute";
+  if (days === 1) return "morgen";
+  return d.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" });
+};
+const fmtAgo = (iso) => {
+  if (!iso) return "nie";
+  const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (!Number.isFinite(mins)) return "unbekannt";
+  if (mins < 1) return "gerade eben";
+  if (mins < 60) return `vor ${mins} min`;
+  const h = Math.round(mins / 60);
+  return h < 24 ? `vor ${h} h` : `vor ${Math.round(h / 24)} Tagen`;
+};
+const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function renderAlerts(status) {
+  const box = document.getElementById("alerts");
+  box.innerHTML = "";
+  if (status.login_erforderlich) {
+    box.append(el(`<div class="alert bad">
+      <strong>Amazon verlangt eine Anmeldung.</strong>
+      <span>Im Browser erledigen, danach läuft es von selbst weiter.</span>
+      <span class="spacer"></span>
+      <a class="btn" href="browser/" target="_blank" rel="noopener">Browser öffnen</a></div>`));
+  }
+  if (status.gedrosselt) {
+    box.append(el(`<div class="alert warn"><strong>Tageslimit erreicht.</strong>
+      <span>Bis Mitternacht wird nicht mehr abgerufen.</span></div>`));
+  }
+  if (status.selektoren_defekt) {
+    box.append(el(`<div class="alert warn"><strong>Selektoren greifen nicht.</strong>
+      <span>Amazon hat vermutlich das Markup geändert — ein Update ist fällig.</span></div>`));
+  }
+}
+
+function renderStats(data) {
+  const s = data.status || {};
+  const cards = [
+    ["Aktive Pakete", data.counts.active],
+    ["Heute erwartet", s.pakete_heute ?? "–"],
+    ["Nächste Stopps", s.naechste_stopps ?? "–"],
+    ["Letzter Abruf", fmtAgo(s.letzter_abruf)],
+  ];
+  document.getElementById("stats").innerHTML = cards
+    .map(([k, v]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`)
+    .join("");
+}
+
+function renderShipments(data) {
+  const box = document.getElementById("ships");
+  const list = data.shipments.filter((s) => s.state !== "DELIVERED");
+  if (!list.length) {
+    box.innerHTML = `<div class="empty">Nichts unterwegs.</div>`;
+    return;
+  }
+  box.innerHTML = "";
+  for (const s of list) {
+    const cls = URGENT.has(s.state) ? "now" : s.state === "WINDOW" ? "soon" : "";
+    const bits = [];
+    const when = fmtDate(s.expected_date);
+    if (when) bits.push(`<span>${esc(when)}</span>`);
+    if (s.window_start) {
+      bits.push(`<span>${esc(s.window_start.slice(0, 5))}–${esc((s.window_end || "").slice(0, 5))}</span>`);
+    }
+    if (s.stops_remaining !== null && s.stops_remaining !== undefined) {
+      bits.push(`<span>noch ${esc(s.stops_remaining)} Stopps</span>`);
+    }
+    if (s.carrier) bits.push(`<span>${esc(s.carrier)}</span>`);
+    if (s.recipient) bits.push(`<span class="badge">${esc(s.recipient)}</span>`);
+    if (s.tracking_url) bits.push(`<a href="${esc(s.tracking_url)}" target="_blank" rel="noopener">Bei Amazon ansehen</a>`);
+
+    box.append(el(`<div class="ship">
+      <div class="top">
+        <span class="title">${esc(s.title || s.shipment_id)}</span>
+        <span class="badge ${cls}">${esc(STATE_LABEL[s.state] || s.state)}</span>
+      </div>
+      <div class="meta">
+        <span>${esc(STATUS_LABEL[s.status] || s.status)}</span>${bits.join("")}
+      </div></div>`));
+  }
+}
+
+function renderFooter(data) {
+  const b = data.budget;
+  const parts = [
+    `Version ${esc(data.version)}`,
+    `Amazon-Abrufe heute: ${b.amazon_used} / ${b.amazon_cap}`,
+  ];
+  if (data.features.dhl) parts.push(`DHL-Abrufe heute: ${b.dhl_used} / 250`);
+  if (!data.features.llm) parts.push("LLM-Fallback: aus");
+  document.getElementById("foot").innerHTML = parts.map((p) => `<span>${p}</span>`).join("");
+}
+
+async function refresh() {
+  try {
+    const res = await fetch("api/state", { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    document.getElementById("dot").classList.add("live");
+    renderAlerts(data.status || {});
+    renderStats(data);
+    renderShipments(data);
+    renderFooter(data);
+  } catch (err) {
+    document.getElementById("dot").classList.remove("live");
+  }
+}
+
+document.getElementById("poll").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = "Angefragt…";
+  try {
+    await fetch("api/poll", { method: "POST" });
+  } finally {
+    setTimeout(() => { button.disabled = false; button.textContent = "Jetzt abrufen"; refresh(); }, 4000);
+  }
+});
+
+refresh();
+setInterval(refresh, 15000);
+</script>
+</body>
+</html>

@@ -7,6 +7,7 @@ only sequences them and handles the ways the outside world says no.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import signal
@@ -35,6 +36,11 @@ LOGGER = logging.getLogger(__name__)
 CHALLENGE_BACKOFF_MINUTES = (5, 15, 60, 240)
 
 DUMP_DIR = Path("/config/dumps")
+
+# The interface runs as its own process; these two files are how it and the
+# scheduler talk to each other.
+STATUS_PATH = Path("/config/status.json")
+POLL_REQUEST_PATH = Path("/config/.poll-now")
 
 
 class Paketbote:
@@ -67,10 +73,14 @@ class Paketbote:
             self._sleep(wait_minutes * 60)
 
     def _sleep(self, seconds: float) -> None:
-        """Sleep in slices so a stop signal is not ignored for hours."""
+        """Sleep in slices, so neither a stop signal nor the interface waits."""
         deadline = time.monotonic() + seconds
         while self._running and time.monotonic() < deadline:
-            time.sleep(min(5.0, deadline - time.monotonic()))
+            if POLL_REQUEST_PATH.exists():
+                POLL_REQUEST_PATH.unlink(missing_ok=True)
+                LOGGER.info("Poll requested from the interface; waking up")
+                return
+            time.sleep(min(2.0, deadline - time.monotonic()))
 
     def _tick(self) -> float:
         now = datetime.now()
@@ -298,6 +308,14 @@ class Paketbote:
         )
 
         self._publisher.publish_summary(summary)
+        self._publisher.publish_shipments(
+            {
+                "count": len([s for s in shipments if s.state != STATE_DELIVERED]),
+                "updated": now.astimezone().isoformat(),
+                "shipments": [_shipment_attributes(s) for s in shipments if s.state != STATE_DELIVERED],
+            }
+        )
+        _write_status(summary)
         self._publisher.publish_health(
             {
                 "felder": self._store.field_health(),
@@ -317,6 +335,31 @@ class Paketbote:
         if SOURCE_LLM in sources:
             return SOURCE_LLM
         return "none"
+
+
+def _shipment_attributes(shipment: Shipment) -> dict:
+    """One shipment, flat enough for a Lovelace card to render directly."""
+    return {
+        "id": shipment.shipment_id,
+        "title": shipment.title,
+        "recipient": shipment.recipient,
+        "status": shipment.status,
+        "state": shipment.state,
+        "carrier": shipment.carrier,
+        "stops_remaining": shipment.stops_remaining,
+        "window_start": shipment.window_start.isoformat() if shipment.window_start else None,
+        "window_end": shipment.window_end.isoformat() if shipment.window_end else None,
+        "expected_date": shipment.expected_date.isoformat() if shipment.expected_date else None,
+        "tracking_url": shipment.tracking_url,
+    }
+
+
+def _write_status(summary: dict) -> None:
+    """Hand the current picture to the interface process."""
+    try:
+        STATUS_PATH.write_text(json.dumps(summary, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        LOGGER.debug("Could not write the status file", exc_info=True)
 
 
 def _postal_code(shipment: Shipment) -> str:

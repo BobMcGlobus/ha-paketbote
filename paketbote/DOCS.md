@@ -15,7 +15,7 @@ und Captchas direkt dort erledigt werden können, auch vom iPhone aus.
    **Einstellungen → Add-ons → Add-on Store → ⋮ → Repositories**:
    `https://github.com/BobMcGlobus/ha-paketbote`
 2. `Paketbote` installieren und starten.
-3. Das Panel erscheint als **Paketbote** in der Sidebar.
+3. **Paketbote** erscheint in der Sidebar.
 
 Der erste Start dauert länger, weil das Image gebaut wird.
 
@@ -32,6 +32,21 @@ genügt; die Zugangsdaten holt sich Paketbote selbst über den Supervisor.
 Vor dem Produktivbetrieb: **1-Click-Bestellung im Amazon-Konto deaktivieren.**
 Im Panel sitzt ein voll funktionsfähiger, eingeloggter Browser.
 
+## Die Oberfläche
+
+Das Panel in der Sidebar zeigt jetzt die Sendungsübersicht: was unterwegs ist,
+für wen, wann erwartet, mit welchem Zusteller. Dazu Warnungen, wenn Amazon eine
+Anmeldung verlangt, das Tageslimit erreicht ist oder die Selektoren nicht mehr
+greifen.
+
+- **Jetzt abrufen** stößt einen Zyklus sofort an, statt auf das nächste
+  Intervall zu warten.
+- **Browser öffnen** führt zum bisherigen Browser-Panel — für Login, MFA und
+  Captchas.
+
+Die Oberfläche läuft als eigener Prozess und liest nur mit. Ein Fehler dort
+kann die Abrufschleife nicht anhalten.
+
 ## Entities
 
 **Aggregate** — immer vorhanden, stabile IDs. Das ist, was Automationen nutzen.
@@ -45,6 +60,7 @@ Im Panel sitzt ein voll funktionsfähiger, eingeloggter Browser.
 | `sensor.paketbote_naechstes_fenster` | Frühester Fensterbeginn |
 | `sensor.paketbote_letzter_abruf` | Watchdog-Basis |
 | `sensor.paketbote_extraktionsmethode` | `css`, `llm`, `mixed` |
+| `sensor.paketbote_sendungen` | Anzahl aktiver Sendungen; alle Details im Attribut `shipments` |
 | `binary_sensor.paketbote_zustellfenster_aktiv` | Mindestens eine Sendung im Fenster |
 | `binary_sensor.paketbote_zustellung_unmittelbar` | Mindestens eine Sendung kurz davor |
 | `binary_sensor.paketbote_login_erforderlich` | Amazon verlangt Interaktion |
@@ -58,6 +74,10 @@ Status, Stopps, Fenster ab, Erwartet, Titel, Zusteller, **Empfänger** und
 Empfänger und Adresse gibt es, weil ein Amazon-Konto einen ganzen Haushalt
 bedienen kann. Automationen lassen sich damit auf die eigenen Pakete
 einschränken — über den Empfängernamen oder den Ort in der Adresse.
+
+`sensor.paketbote_sendungen` trägt die komplette Liste als Attribut — das ist
+der Sensor, den eine Lovelace-Karte auslesen sollte, statt sich durch die
+dynamischen Geräte zu hangeln.
 
 Die Aggregate werden vom Add-on berechnet, nicht in HA nachgebaut. Ein
 Template-Sensor über eine wechselnde Entity-Liste bricht bei jeder neuen

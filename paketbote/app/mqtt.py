@@ -22,6 +22,7 @@ BASE_TOPIC = "paketbote"
 AVAILABILITY_TOPIC = f"{BASE_TOPIC}/status"
 SUMMARY_TOPIC = f"{BASE_TOPIC}/summary/state"
 HEALTH_TOPIC = f"{BASE_TOPIC}/health/state"
+SHIPMENTS_TOPIC = f"{BASE_TOPIC}/shipments/state"
 DISCOVERY_PREFIX = "homeassistant"
 
 PAYLOAD_ONLINE = "online"
@@ -90,6 +91,18 @@ AGGREGATE_ENTITIES: list[dict] = [
         "component": "sensor",
         "name": "Extraktionsmethode",
         "icon": "mdi:code-tags",
+    },
+    {
+        # One entity carrying every shipment as an attribute. A Lovelace card
+        # renders that far more easily than a changing set of devices.
+        "key": "sendungen",
+        "component": "sensor",
+        "name": "Sendungen",
+        "icon": "mdi:package-variant-closed",
+        "state_class": "measurement",
+        "state_topic": SHIPMENTS_TOPIC,
+        "value_key": "count",
+        "attributes_topic": SHIPMENTS_TOPIC,
     },
     {
         "key": "zustellfenster_aktiv",
@@ -201,7 +214,7 @@ class Publisher:
                 "name": entity["name"],
                 "unique_id": object_id,
                 "object_id": object_id,
-                "state_topic": SUMMARY_TOPIC,
+                "state_topic": entity.get("state_topic", SUMMARY_TOPIC),
                 "availability_topic": AVAILABILITY_TOPIC,
                 "payload_available": PAYLOAD_ONLINE,
                 "payload_not_available": PAYLOAD_OFFLINE,
@@ -212,7 +225,7 @@ class Publisher:
                 payload["payload_on"] = "ON"
                 payload["payload_off"] = "OFF"
             else:
-                payload["value_template"] = _plain(entity["key"])
+                payload["value_template"] = _plain(entity.get("value_key", entity["key"]))
             for optional in ("icon", "device_class", "state_class"):
                 if optional in entity:
                     payload[optional] = entity[optional]
@@ -274,6 +287,9 @@ class Publisher:
 
     def publish_summary(self, summary: dict) -> None:
         self._publish(SUMMARY_TOPIC, summary, retain=True)
+
+    def publish_shipments(self, payload: dict) -> None:
+        self._publish(SHIPMENTS_TOPIC, payload, retain=True)
 
     def publish_health(self, health: dict) -> None:
         self._publish(HEALTH_TOPIC, health, retain=True)

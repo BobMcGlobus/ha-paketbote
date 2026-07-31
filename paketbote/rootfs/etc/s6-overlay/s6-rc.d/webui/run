@@ -1,0 +1,11 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# The add-on's own interface, behind ingress.
+#
+# Its own process on purpose: it reads the state database and the status file
+# the scheduler writes, so a mistake in here cannot take the polling loop down.
+# ==============================================================================
+bashio::log.info "Starting the Paketbote interface on 127.0.0.1:8099..."
+
+export PYTHONPATH=/opt/paketbote
+exec /opt/venv/bin/python -m app.web
