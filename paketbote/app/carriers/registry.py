@@ -1,8 +1,8 @@
 """The carriers a shipment can be filed under, and where to look them up.
 
-Only DHL is queried automatically so far. The others are here because a
-manually added parcel still deserves a working link, and because this is the
-list the interface offers.
+DHL, UPS and FedEx are queried automatically once their credentials are in
+place. The others are here because a manually added parcel still deserves a
+working link, and because this is the list the interface offers.
 """
 
 from __future__ import annotations
@@ -35,8 +35,13 @@ CARRIERS: tuple[CarrierInfo, ...] = (
         "https://www.myhermes.de/empfangen/sendungsverfolgung/sendungsinformation/#{code}",
     ),
     CarrierInfo("gls", "GLS", "https://gls-group.com/DE/de/paketverfolgung?match={code}"),
-    CarrierInfo("ups", "UPS", "https://www.ups.com/track?tracknum={code}"),
-    CarrierInfo("fedex", "FedEx", "https://www.fedex.com/fedextrack/?trknbr={code}"),
+    CarrierInfo("ups", "UPS", "https://www.ups.com/track?tracknum={code}", automatic=True),
+    CarrierInfo(
+        "fedex",
+        "FedEx",
+        "https://www.fedex.com/fedextrack/?trknbr={code}",
+        automatic=True,
+    ),
     CarrierInfo("dpost", "Deutsche Post", "https://www.deutschepost.de/sendung/simpleQuery.html?form.sendungsnummer={code}"),
     CarrierInfo("amzl", "AMZL", ""),
     CarrierInfo("other", "Anderer", ""),

@@ -21,6 +21,18 @@ configuration:
     name: DHL-API-Schlüssel
     description: Optional. Von developer.dhl.com, Shipment Tracking — Unified. Schaltet
       die DHL-Abfrage frei.
+  ups_client_id:
+    name: UPS-Client-ID
+    description: Optional. Aus einer App auf developer.ups.com mit dem Produkt Tracking.
+  ups_client_secret:
+    name: UPS-Client-Secret
+    description: Gehört zur Client-ID; beide zusammen schalten die UPS-Abfrage frei.
+  fedex_client_id:
+    name: FedEx-API-Key
+    description: Optional. Aus einem Projekt auf developer.fedex.com mit der Track API.
+  fedex_client_secret:
+    name: FedEx-Secret-Key
+    description: Gehört zum API-Key; beide zusammen schalten die FedEx-Abfrage frei.
   poll_idle_minutes:
     name: 'Intervall: untätig'
     description: Abstand, wenn keine Sendung aktiv ist.

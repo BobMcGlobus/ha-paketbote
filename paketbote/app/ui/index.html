@@ -195,7 +195,7 @@
     <div id="options"></div>
     <div class="panel">
       <button class="primary" id="saveSettings"></button>
-      <button id="testDhl"></button>
+      <span id="carrierTests"></span>
       <button id="resetSettings"></button>
       <span class="muted" id="saveMsg"></span>
     </div>
@@ -236,13 +236,13 @@ const T = {
     errCode: "Bitte eine Sendungsnummer eingeben.", errGeneric: "Konnte nicht gespeichert werden.",
     status: "Status", selectors: "Selektoren", actions: "Aktionen",
     options: "Einstellungen", save: "Speichern", saving: "Wird gespeichert…", saved: "Gespeichert.",
-    testDhl: "DHL-Schlüssel prüfen", testing: "Wird geprüft…",
-    dhlOk: "DHL akzeptiert den Schlüssel.", dhlNoKey: "Kein DHL-Schlüssel hinterlegt.",
-    dhlFail: "DHL lehnt ab: ", reset: "Auf Standard zurücksetzen",
+    testCarrier: "{c} prüfen", testing: "Wird geprüft…",
+    carrierOk: "{c} akzeptiert die Zugangsdaten.", carrierNoKey: "Keine {c}-Zugangsdaten hinterlegt.",
+    carrierFail: "{c} lehnt ab: ", reset: "Auf Standard zurücksetzen",
     resetConfirm: "Alle Einstellungen auf Standard zurücksetzen? Schlüssel und Filter bleiben.",
     inEffect: "Beim Abruf wirksam",
     needsRestart: "wirkt nach Neustart",
-    groups: { amazon: "Amazon-Quelle", polling: "Amazon: Abrufrhythmus", carriers: "Zusteller: DHL",
+    groups: { amazon: "Amazon-Quelle", polling: "Amazon: Abrufrhythmus", carriers: "Zusteller",
               extraction: "Auslesen", interface: "Darstellung", advanced: "Erweitert" },
     labels: {
       amazon_domain: "Amazon-Domain", language: "Sprache",
@@ -253,7 +253,11 @@ const T = {
       imminent_stops_threshold: "Schwelle: gleich da", quiet_hours_start: "Nachtruhe ab",
       quiet_hours_end: "Nachtruhe bis", daily_request_cap: "Tageslimit",
       jitter_percent: "Streuung", dhl_api_key: "DHL-API-Schlüssel",
-      dhl_poll_minutes: "Frühestens erneut fragen",
+      dhl_poll_minutes: "DHL: frühestens erneut fragen",
+      ups_client_id: "UPS-Client-ID", ups_client_secret: "UPS-Client-Secret",
+      ups_poll_minutes: "UPS: frühestens erneut fragen",
+      fedex_client_id: "FedEx-API-Key", fedex_client_secret: "FedEx-Secret-Key",
+      fedex_poll_minutes: "FedEx: frühestens erneut fragen",
       llm_provider: "LLM-Anbieter", llm_model: "LLM-Modell", llm_api_key: "LLM-API-Schlüssel",
       developer_mode: "Entwicklermodus", dump_on_start: "Beim Start ausgeben", log_level: "Protokollstufe",
     },
@@ -294,13 +298,13 @@ const T = {
     errCode: "Please enter a tracking number.", errGeneric: "Could not be saved.",
     status: "Status", selectors: "Selectors", actions: "Actions",
     options: "Settings", save: "Save", saving: "Saving…", saved: "Saved.",
-    testDhl: "Test DHL key", testing: "Testing…",
-    dhlOk: "DHL accepted the key.", dhlNoKey: "No DHL key configured.",
-    dhlFail: "DHL refused: ", reset: "Reset to defaults",
+    testCarrier: "Test {c}", testing: "Testing…",
+    carrierOk: "{c} accepted the credentials.", carrierNoKey: "No {c} credentials configured.",
+    carrierFail: "{c} refused: ", reset: "Reset to defaults",
     resetConfirm: "Reset all settings to their defaults? Keys and filters are kept.",
     inEffect: "In effect at the last poll",
     needsRestart: "takes effect after a restart",
-    groups: { amazon: "Amazon source", polling: "Amazon: polling", carriers: "Carrier: DHL",
+    groups: { amazon: "Amazon source", polling: "Amazon: polling", carriers: "Carriers",
               extraction: "Extraction", interface: "Appearance", advanced: "Advanced" },
     labels: {
       amazon_domain: "Amazon domain", language: "Language",
@@ -311,7 +315,11 @@ const T = {
       imminent_stops_threshold: "Threshold: almost there", quiet_hours_start: "Quiet hours from",
       quiet_hours_end: "Quiet hours until", daily_request_cap: "Daily cap",
       jitter_percent: "Jitter", dhl_api_key: "DHL API key",
-      dhl_poll_minutes: "Ask again no sooner than",
+      dhl_poll_minutes: "DHL: ask again no sooner than",
+      ups_client_id: "UPS client ID", ups_client_secret: "UPS client secret",
+      ups_poll_minutes: "UPS: ask again no sooner than",
+      fedex_client_id: "FedEx API key", fedex_client_secret: "FedEx secret key",
+      fedex_poll_minutes: "FedEx: ask again no sooner than",
       llm_provider: "LLM provider", llm_model: "LLM model", llm_api_key: "LLM API key",
       developer_mode: "Developer mode", dump_on_start: "Dump on start", log_level: "Log level",
     },
@@ -535,6 +543,12 @@ function renderSettings(data) {
     [L.dhl, f.dhl ? `${L.on} · ${b.dhl_used} / 250` : L.off],
     [L.llm, f.llm ? L.on : L.off],
   ];
+  for (const [key, name] of TESTABLE) {
+    if (key === "dhl") continue;
+    const used = b.carrier_used?.[key] ?? 0;
+    rows.splice(rows.length - 1, 0,
+      [name, f[key] ? `${L.on} · ${used}` : L.off]);
+  }
   const eff = data.status?.effective;
   if (eff) {
     rows.push([L.inEffect,
@@ -591,6 +605,9 @@ async function loadOptions() {
   } catch (err) { /* settings stay as they were */ }
 }
 
+// The carriers we can ask automatically, and so can offer to test.
+const TESTABLE = [["dhl", "DHL"], ["ups", "UPS"], ["fedex", "FedEx"]];
+
 function applyLabels(data) {
   $("hParcels").textContent = L.parcels;
   $("hDelivered").textContent = L.delivered;
@@ -599,7 +616,9 @@ function applyLabels(data) {
   $("addHint").textContent = L.addHint;
   $("hOptions").textContent = L.options;
   $("saveSettings").textContent = L.save;
-  $("testDhl").textContent = L.testDhl;
+  $("carrierTests").innerHTML = TESTABLE.map(([key, name]) =>
+    `<button data-carrier="${key}" data-name="${name}">${esc(L.testCarrier.replace("{c}", name))}</button>`
+  ).join(" ");
   $("resetSettings").textContent = L.reset;
   $("hStatus").textContent = L.status;
   $("hSelectors").textContent = L.selectors;
@@ -710,16 +729,20 @@ $("saveSettings").addEventListener("click", async (event) => {
   finally { b.disabled = false; b.textContent = L.save; }
 });
 
-$("testDhl").addEventListener("click", async (event) => {
-  const b = event.currentTarget, msg = $("saveMsg");
+$("carrierTests").addEventListener("click", async (event) => {
+  const b = event.target.closest("button[data-carrier]");
+  if (!b) return;
+  const key = b.dataset.carrier, name = b.dataset.name, msg = $("saveMsg");
+  const label = b.textContent;
   b.disabled = true; b.textContent = L.testing; msg.textContent = "";
   try {
-    const res = await fetch("api/test/dhl", { method: "POST" });
+    const res = await fetch(`api/test/${key}`, { method: "POST" });
     const data = await res.json();
-    msg.textContent = data.ok ? L.dhlOk
-      : data.reason === "no_key" ? L.dhlNoKey : L.dhlFail + data.reason;
+    const text = data.ok ? L.carrierOk
+      : data.reason === "no_key" ? L.carrierNoKey : L.carrierFail + data.reason;
+    msg.textContent = text.replace("{c}", name);
   } catch (err) { msg.textContent = L.errGeneric; }
-  finally { b.disabled = false; b.textContent = L.testDhl; }
+  finally { b.disabled = false; b.textContent = label; }
 });
 
 $("resetSettings").addEventListener("click", async () => {

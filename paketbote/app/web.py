@@ -18,7 +18,7 @@ from . import __version__
 from . import settings as settings_module
 from .carriers import registry
 from .carriers.base import CarrierError, NotFound
-from .carriers.dhl import DhlTracker
+from .carriers import trackers as carrier_trackers
 from .config import Config
 from .people import normalise_name
 from .models import (
@@ -121,7 +121,10 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
             shipments = store.all_shipments()
             health = store.field_health()
             used = store.requests_today()
-            dhl_used = store.carrier_requests_today("dhl")
+            carrier_used = {
+                key: store.carrier_requests_today(key)
+                for key in carrier_trackers.MODULES
+            }
             recipients = store.known_recipients()
         finally:
             store.close()
@@ -147,11 +150,14 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
                 "budget": {
                     "amazon_used": used,
                     "amazon_cap": config.daily_request_cap,
-                    "dhl_used": dhl_used,
+                    "dhl_used": carrier_used["dhl"],
+                    "carrier_used": carrier_used,
                 },
                 "selectors": health,
                 "features": {
                     "dhl": bool(config.dhl_api_key),
+                    "ups": bool(config.ups_client_id and config.ups_client_secret),
+                    "fedex": bool(config.fedex_client_id and config.fedex_client_secret),
                     "llm": bool(config.llm_api_key),
                     "developer_mode": config.developer_mode,
                 },
@@ -181,19 +187,23 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
             "values": values,
         })
 
-    @app.post("/api/test/dhl")
-    def test_dhl():
-        """Say plainly whether DHL accepts the configured key."""
-        config = Config.load()
-        if not config.dhl_api_key:
-            return jsonify({"ok": False, "reason": "no_key"})
+    @app.post("/api/test/<carrier>")
+    def test_carrier(carrier):
+        """Say plainly whether a carrier accepts the configured credentials."""
+        if carrier not in carrier_trackers.MODULES:
+            return jsonify({"ok": False, "reason": "unknown carrier"}), 404
 
+        config = Config.load()
         store = Store(db_path)
         try:
-            ok, detail = DhlTracker(config.dhl_api_key, store).probe()
+            tracker = carrier_trackers.build(config, store)[carrier]
+            if not tracker.available:
+                return jsonify({"ok": False, "reason": "no_key"})
+            ok, detail = tracker.probe()
         finally:
             store.close()
-        LOGGER.info("DHL key test: %s (%s)", "ok" if ok else "failed", detail)
+        LOGGER.info("%s credential test: %s (%s)", tracker.name,
+                    "ok" if ok else "failed", detail)
         return jsonify({"ok": ok, "reason": detail})
 
     @app.post("/api/settings/reset")

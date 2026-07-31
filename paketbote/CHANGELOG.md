@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.15.0
+
+- **UPS und FedEx werden automatisch abgefragt**, sobald ihre Zugangsdaten
+  hinterlegt sind. Beide arbeiten mit OAuth: ID und Secret werden gegen ein
+  Token getauscht, das zwischengespeichert wird
+- **Eigenes Intervall je Zusteller** statt eines gemeinsamen Werts
+- **Prüfknopf je Zusteller** in den Einstellungen; die Antwort nennt immer den
+  HTTP-Status
+- Die Abfrage wählt das Zustellermodul jetzt anhand des Zustellers aus, statt
+  DHL fest zu verdrahten
+
 ## 0.14.1
 
 - **DHL akzeptiert den Schlüssel auch als Query-Parameter**, nicht nur als

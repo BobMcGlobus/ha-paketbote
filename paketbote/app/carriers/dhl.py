@@ -54,6 +54,10 @@ OUT_FOR_DELIVERY_MARKERS = (
 # Which carrier names this module answers for.
 HANDLES = {"dhl", "deutsche post", "dhl paket"}
 
+# DHL only reveals the delivery window when the recipient's postal code is
+# supplied, so it is worth trying the ones we know.
+WANTS_POSTCODE = True
+
 
 def handles(carrier: str | None) -> bool:
     return bool(carrier) and carrier.strip().lower() in HANDLES

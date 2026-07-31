@@ -127,6 +127,8 @@ Neustart des Add-ons, alles Übrige ab dem nächsten Abruf.
 | `llm_provider` / `llm_model` | `gemini` / `gemini-2.5-flash` | Nur für den Fallback |
 | `llm_api_key` | leer | **Optional.** Ohne Key läuft alles weiter, nur ohne Fallback |
 | `dhl_api_key` | leer | **Optional.** Schaltet die DHL-Abfrage frei |
+| `ups_client_id` / `ups_client_secret` | leer | **Optional.** Schaltet die UPS-Abfrage frei |
+| `fedex_client_id` / `fedex_client_secret` | leer | **Optional.** Schaltet die FedEx-Abfrage frei |
 | `poll_idle_minutes` | 60 | Keine aktive Sendung |
 | `poll_pending_minutes` | 15 | Zustellung heute, Fenster noch zu |
 | `poll_window_minutes` | 10 | Fenster offen |
@@ -175,6 +177,22 @@ des Empfängers mitgeschickt wird; die kommt aus der Lieferadresse.
 Kostenlos, 250 Abrufe pro Tag, höchstens einer alle fünf Sekunden — beides wird
 eingehalten und separat vom Amazon-Budget gezählt. Einen Schlüssel gibt es auf
 `developer.dhl.com` unter *Shipment Tracking — Unified*.
+
+Dasselbe gilt für **UPS** und **FedEx**. Beide arbeiten nicht mit einem festen
+Schlüssel, sondern mit einem Paar aus ID und Secret, das gegen ein zeitlich
+begrenztes Token getauscht wird; darum stehen dort zwei Felder. Das Token wird
+zwischengespeichert, ein Abrufzyklus kostet also nicht ein Token pro Paket.
+
+| Zusteller | Zugangsdaten | Woher |
+|---|---|---|
+| DHL | API-Key | `developer.dhl.com` → *Shipment Tracking — Unified* |
+| UPS | Client-ID + Secret | `developer.ups.com` → App mit Produkt *Tracking* |
+| FedEx | API-Key + Secret-Key | `developer.fedex.com` → Projekt mit *Track API* |
+
+Jeder Zusteller hat ein eigenes Intervall („frühestens erneut fragen"), und in
+den Einstellungen prüft je ein Knopf, ob die Zugangsdaten angenommen werden.
+Die Antwort nennt immer den HTTP-Status, damit ein abgelehnter Schlüssel von
+einer Störung zu unterscheiden ist.
 
 AMZL-Sendungen bleiben beim Amazon-Weg; dafür gibt es keine Alternative.
 

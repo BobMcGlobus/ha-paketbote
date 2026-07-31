@@ -1,6 +1,6 @@
 ---
 name: Paketbote
-version: "0.14.1"
+version: "0.15.0"
 slug: paketbote
 description: Amazon-Lieferverfolgung via persistentem Browser
 url: https://github.com/BobMcGlobus/ha-paketbote
@@ -62,6 +62,12 @@ schema:
   llm_api_key: password?
   dhl_api_key: password?
   dhl_poll_minutes: int(5,720)?
+  ups_client_id: password?
+  ups_client_secret: password?
+  ups_poll_minutes: int(5,720)?
+  fedex_client_id: password?
+  fedex_client_secret: password?
+  fedex_poll_minutes: int(5,720)?
   poll_idle_minutes: int(5,1440)
   poll_pending_minutes: int(1,240)
   poll_window_minutes: int(1,120)

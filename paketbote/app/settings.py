@@ -69,6 +69,12 @@ FIELDS: tuple[Field, ...] = (
 
     Field("dhl_api_key", "password", "carriers"),
     Field("dhl_poll_minutes", "int", "carriers", 5, 720, unit="min"),
+    Field("ups_client_id", "password", "carriers"),
+    Field("ups_client_secret", "password", "carriers"),
+    Field("ups_poll_minutes", "int", "carriers", 5, 720, unit="min"),
+    Field("fedex_client_id", "password", "carriers"),
+    Field("fedex_client_secret", "password", "carriers"),
+    Field("fedex_poll_minutes", "int", "carriers", 5, 720, unit="min"),
 
     Field("llm_provider", "select", "extraction", options=("gemini", "openai", "anthropic")),
     Field("llm_model", "text", "extraction"),

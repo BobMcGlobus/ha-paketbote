@@ -22,6 +22,18 @@ configuration:
     name: DHL API key
     description: Optional. From developer.dhl.com, Shipment Tracking — Unified. Enables
       DHL lookups.
+  ups_client_id:
+    name: UPS client ID
+    description: Optional. From an app on developer.ups.com with the Tracking product.
+  ups_client_secret:
+    name: UPS client secret
+    description: Goes with the client ID; together they enable UPS lookups.
+  fedex_client_id:
+    name: FedEx API key
+    description: Optional. From a project on developer.fedex.com with the Track API.
+  fedex_client_secret:
+    name: FedEx secret key
+    description: Goes with the API key; together they enable FedEx lookups.
   poll_idle_minutes:
     name: 'Interval: idle'
     description: Gap while nothing is in transit.

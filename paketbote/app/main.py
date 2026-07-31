@@ -19,8 +19,7 @@ from pathlib import Path
 from . import __version__
 from .browser import AttachedBrowser, BrowserUnavailable, LoginRequired
 from .carriers import CarrierError, NotFound, RateLimited
-from .carriers import dhl as dhl_carrier
-from .carriers.dhl import DhlTracker
+from .carriers import trackers as carrier_trackers
 from .config import Config
 from .extractor import SOURCE_CSS, SOURCE_LLM, extract
 from .models import (
@@ -81,8 +80,8 @@ class Paketbote:
         self._throttled = False
         self._last_sources: list[str] = []
         self._last_poll: datetime | None = None
-        self._dhl_key = config.dhl_api_key
-        self._dhl = DhlTracker(config.dhl_api_key, store)
+        self._carrier_credentials = carrier_trackers.credentials(config)
+        self._trackers = carrier_trackers.build(config, store)
         self._css_failures = 0
 
     def stop(self, *_args: object) -> None:
@@ -119,10 +118,16 @@ class Paketbote:
         # true.
         self._config = Config.load()
         config = self._config
-        if config.dhl_api_key != self._dhl_key:
-            self._dhl_key = config.dhl_api_key
-            self._dhl = DhlTracker(config.dhl_api_key, self._store)
-            LOGGER.info("DHL lookups %s", "enabled" if config.dhl_api_key else "disabled")
+        credentials = carrier_trackers.credentials(config)
+        if credentials != self._carrier_credentials:
+            self._carrier_credentials = credentials
+            self._trackers = carrier_trackers.build(config, self._store)
+            for tracker in self._trackers.values():
+                LOGGER.info(
+                    "%s lookups %s",
+                    tracker.name,
+                    "enabled" if tracker.available else "disabled",
+                )
 
         used = self._store.requests_today()
         if used >= config.daily_request_cap:
@@ -397,40 +402,52 @@ class Paketbote:
     def _ask_carrier(self, shipment: Shipment) -> None:
         """Let the carrier answer where the parcel is, when it can.
 
-        DHL knows more about a DHL parcel than Amazon's tracker does, and
-        asking them costs no Amazon request at all.
+        A carrier knows more about its own parcel than Amazon's tracker does,
+        and asking them costs no Amazon request at all.
         """
         if not shipment.tracking_code:
             LOGGER.debug("%s has no tracking number yet", shipment.shipment_id)
             return
-        if not self._dhl.available:
-            LOGGER.debug("No DHL key configured; not asking for %s", shipment.shipment_id)
-            return
-        if not dhl_carrier.handles(shipment.carrier):
-            LOGGER.debug("%s is carried by %r, not DHL", shipment.shipment_id, shipment.carrier)
+
+        key = carrier_trackers.key_for(shipment.carrier)
+        if not key:
+            LOGGER.debug("No module answers for %r", shipment.carrier)
             return
 
-        due = self._config.dhl_poll_minutes
+        tracker = self._trackers[key]
+        if not tracker.available:
+            LOGGER.debug("No %s credentials; not asking for %s", tracker.name,
+                         shipment.shipment_id)
+            return
+
+        due = carrier_trackers.poll_minutes(self._config, key)
         if shipment.carrier_checked_at is not None:
             waited = (datetime.now() - shipment.carrier_checked_at).total_seconds() / 60
             if waited < due:
-                LOGGER.debug("Asked DHL about %s %.0f min ago; waiting for %d",
-                             shipment.shipment_id, waited, due)
+                LOGGER.debug("Asked %s about %s %.0f min ago; waiting for %d",
+                             tracker.name, shipment.shipment_id, waited, due)
                 return
         shipment.carrier_checked_at = datetime.now()
 
+        # Only DHL trades a postal code for the delivery window; the others
+        # answer from the tracking number alone, so one call is enough.
+        if getattr(carrier_trackers.MODULES[key], "WANTS_POSTCODE", False):
+            postcodes = self._postcode_candidates(shipment)
+        else:
+            postcodes = [""]
+
         update = None
-        for postcode in self._postcode_candidates(shipment):
+        for postcode in postcodes:
             try:
-                attempt = self._dhl.fetch(shipment.tracking_code, postcode)
+                attempt = tracker.fetch(shipment.tracking_code, postcode)
             except NotFound:
-                LOGGER.debug("DHL does not know %s yet", shipment.tracking_code)
+                LOGGER.debug("%s does not know %s yet", tracker.name, shipment.tracking_code)
                 return
             except RateLimited as err:
                 LOGGER.warning("%s", err)
                 return
             except CarrierError as err:
-                LOGGER.warning("DHL lookup failed: %s", err)
+                LOGGER.warning("%s lookup failed: %s", tracker.name, err)
                 return
 
             update = attempt
@@ -453,7 +470,8 @@ class Paketbote:
             shipment.window_end = update.window_end
 
         LOGGER.info(
-            "DHL: %s is %s%s",
+            "%s: %s is %s%s",
+            tracker.name,
             shipment.shipment_id,
             update.status,
             f" ({update.description})" if update.description else "",
@@ -487,6 +505,9 @@ class Paketbote:
         summary["effective"] = {
             "daily_request_cap": self._config.daily_request_cap,
             "poll_idle_minutes": self._config.poll_idle_minutes,
+            "carriers": sorted(
+                key for key, tracker in self._trackers.items() if tracker.available
+            ),
             "dhl": bool(self._config.dhl_api_key),
             "dhl_poll_minutes": self._config.dhl_poll_minutes,
             "read_at": now.astimezone().isoformat(),

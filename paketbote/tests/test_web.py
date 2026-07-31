@@ -264,12 +264,18 @@ class TestSettings(WebTestCase):
         self.assertEqual(stored["hidden_recipients"], ["eltern"])
         self.assertNotIn("poll_idle_minutes", stored)
 
-    def test_dhl_test_without_a_key(self):
-        response = self.client.post("/api/test/dhl")
-        self.assertEqual(response.status_code, 200)
-        data = response.get_json()
-        self.assertFalse(data["ok"])
-        self.assertEqual(data["reason"], "no_key")
+    def test_carrier_test_without_credentials(self):
+        for carrier in ("dhl", "ups", "fedex"):
+            response = self.client.post(f"/api/test/{carrier}")
+            self.assertEqual(response.status_code, 200, carrier)
+            data = response.get_json()
+            self.assertFalse(data["ok"], carrier)
+            self.assertEqual(data["reason"], "no_key", carrier)
+
+    def test_a_carrier_we_cannot_ask_is_a_404(self):
+        response = self.client.post("/api/test/hermes")
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(response.get_json()["ok"])
 
     def test_hidden_recipients_round_trip(self):
         self.client.post("/api/settings", json={"hidden_recipients": ["eltern althoff"]})

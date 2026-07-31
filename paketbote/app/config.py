@@ -49,6 +49,12 @@ class Config:
     quiet_hours_end: int = 6
     dhl_api_key: str = ""
     dhl_poll_minutes: int = 30
+    ups_client_id: str = ""
+    ups_client_secret: str = ""
+    ups_poll_minutes: int = 30
+    fedex_client_id: str = ""
+    fedex_client_secret: str = ""
+    fedex_poll_minutes: int = 30
     dump_on_start: bool = False
     developer_mode: bool = False
     language: str = "auto"
