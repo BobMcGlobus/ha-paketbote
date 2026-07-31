@@ -49,19 +49,14 @@ _MONTH_DAY_RE = re.compile(rf"\b({_MONTH_ALTERNATION})\.?\s+(\d{{1,2}})\b", re.I
 TODAY_MARKERS = ("today", "heute")
 TOMORROW_MARKERS = ("tomorrow", "morgen")
 
-# "zwischen 14:00 und 18:00", "14:00 - 18:00", "2:00 PM to 6:00 PM"
-_WINDOW_HHMM_RE = re.compile(
-    r"(\d{1,2})[:.](\d{2})\s*(?:uhr\s*)?(?:und|and|bis|to|[-–—])\s*(\d{1,2})[:.](\d{2})",
-    re.IGNORECASE,
-)
-# "between 2pm and 6pm", "2 PM - 6 PM"
-_WINDOW_AMPM_RE = re.compile(
-    r"(\d{1,2})\s*(am|pm)\s*(?:and|to|[-–—])\s*(\d{1,2})\s*(am|pm)",
-    re.IGNORECASE,
-)
-# "zwischen 14 und 18 Uhr"
-_WINDOW_HOURS_RE = re.compile(
-    r"zwischen\s*(\d{1,2})\s*(?:und|bis|[-–—])\s*(\d{1,2})\s*uhr",
+# One pattern for every shape Amazon actually uses: "5:30 pm - 8:30 pm",
+# "7 am – 1 pm", "14:00 und 18:00", "zwischen 9 und 13 Uhr". Splitting these
+# into separate patterns missed the common case, because the am/pm sits
+# between the minutes and the dash.
+_WINDOW_RE = re.compile(
+    r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:uhr\s*)?"
+    r"(?:und|and|bis|to|[-–—])\s*"
+    r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?",
     re.IGNORECASE,
 )
 
@@ -166,24 +161,29 @@ def parse_window(text: str) -> tuple[time, time] | None:
     if not text:
         return None
 
-    match = _WINDOW_HHMM_RE.search(text)
-    if match:
-        return _times(int(match.group(1)), int(match.group(2)), int(match.group(3)), int(match.group(4)))
+    match = _WINDOW_RE.search(text)
+    if not match:
+        return None
 
-    match = _WINDOW_AMPM_RE.search(text)
-    if match:
-        start = _from_ampm(int(match.group(1)), match.group(2))
-        end = _from_ampm(int(match.group(3)), match.group(4))
-        return _times(start, 0, end, 0)
+    start_hour, start_min, start_ampm, end_hour, end_min, end_ampm = match.groups()
 
-    match = _WINDOW_HOURS_RE.search(text)
-    if match:
-        return _times(int(match.group(1)), 0, int(match.group(2)), 0)
+    # "7 am – 1 pm" carries both markers; "5:30 - 8:30 pm" only the last one,
+    # and then it applies to both halves.
+    start = _from_ampm(int(start_hour), start_ampm or end_ampm)
+    end = _from_ampm(int(end_hour), end_ampm or start_ampm)
 
-    return None
+    window = _times(start, int(start_min or 0), end, int(end_min or 0))
+    if window is None:
+        return None
+
+    # A window ending before it starts is not a window, just two numbers that
+    # happened to sit either side of a dash.
+    return window if window[0] < window[1] else None
 
 
-def _from_ampm(hour: int, marker: str) -> int:
+def _from_ampm(hour: int, marker: str | None) -> int:
+    if not marker:
+        return hour
     hour %= 12
     return hour + 12 if marker.lower() == "pm" else hour
 

@@ -78,6 +78,29 @@ class TestWindow(unittest.TestCase):
     def test_noon_and_midnight_am_pm(self):
         self.assertEqual(parse_window("between 12am and 12pm"), (time(0, 0), time(12, 0)))
 
+    def test_the_shapes_amazon_actually_uses(self):
+        # Taken from real tracker pages. The am/pm sits between the minutes and
+        # the dash, which the earlier patterns did not survive.
+        self.assertEqual(
+            parse_window("Arriving today 5:30 pm - 8:30 pm"), (time(17, 30), time(20, 30)))
+        self.assertEqual(
+            parse_window("Now arriving today 3:15 pm - 5:15 pm"), (time(15, 15), time(17, 15)))
+        self.assertEqual(
+            parse_window("Arriving tomorrow 7 am – 1 pm"), (time(7, 0), time(13, 0)))
+        self.assertEqual(
+            parse_window("Zustellung heute 15:15 - 17:15"), (time(15, 15), time(17, 15)))
+
+    def test_a_trailing_marker_applies_to_both_halves(self):
+        self.assertEqual(parse_window("5:30 - 8:30 pm"), (time(17, 30), time(20, 30)))
+
+    def test_date_ranges_are_not_windows(self):
+        for text in ("Arriving 12 August - 13 August", "Arriving 13 August - 31 August",
+                     "Expected by 12 August", "Delivered 30 July"):
+            self.assertIsNone(parse_window(text), text)
+
+    def test_unrelated_numbers_are_not_a_window(self):
+        self.assertIsNone(parse_window("Packung mit 3 Gläsern x 250 ml"))
+
     def test_no_window(self):
         self.assertIsNone(parse_window("Arriving tomorrow"))
         self.assertIsNone(parse_window(""))
@@ -94,6 +117,12 @@ class TestStops(unittest.TestCase):
 
     def test_zero_is_a_real_answer(self):
         self.assertEqual(parse_stops("0 stops away"), 0)
+
+    def test_the_map_callout_in_both_languages(self):
+        # This is where the count actually lives: Amazon's own JSON, rendered
+        # into a map bubble later.
+        self.assertEqual(parse_stops("2 stops away"), 2)
+        self.assertEqual(parse_stops("2 Stopps entfernt"), 2)
 
     def test_unrelated_numbers_are_not_stops(self):
         # The plan is explicit: never guess a stop count.

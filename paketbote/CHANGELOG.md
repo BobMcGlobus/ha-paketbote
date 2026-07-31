@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.12.0
+
+- **Die Stopp-Zahl wird gelesen — die Eskalationsstufen funktionieren.** Sie
+  steht nicht im sichtbaren Text, sondern im eingebetteten JSON der Seite
+  (`calloutMessage`); die Kartenblase entsteht daraus erst per JavaScript.
+  Deshalb war sie in allen bisherigen Text-Dumps unsichtbar, obwohl sie in
+  denselben Seiten längst enthalten war. Funktioniert in beiden Sprachen
+- **Zustellfenster wurden nie erkannt.** Amazon schreibt sie als
+  „5:30 pm - 8:30 pm" — das am/pm steht zwischen Minuten und Bindestrich, was
+  keines der bisherigen Muster überstand. Alle Schreibweisen laufen jetzt über
+  ein gemeinsames Muster, und ein Zeitraum, der vor seinem Beginn endet, wird
+  verworfen statt als Fenster durchgereicht
+- Das Fenster wird aus der Ankunftszeile gelesen, nicht mehr aus der ganzen
+  Karte — dort standen sonst beliebige Zahlenpaare mit Bindestrich
+
 ## 0.11.1
 
 - **Frisch aufgegebene Bestellungen landeten im Archiv.** Eine Sendung, die in

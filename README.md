@@ -59,7 +59,7 @@ Das Projekt wird in Phasen gebaut; jede endet mit einem lauffähigen Zustand.
 | 3 | Extraktion: CSS zuerst, LLM als Fallback | ✅ |
 | 4 | Scheduler / Polling-Zustandsmaschine | ✅ |
 | 5 | MQTT Discovery | ✅ |
-| 6 | Härtung (Backoff, Request-Cap, Gesundheitssensor) | teilweise |
+| 6 | Härtung (Backoff, Request-Cap, Gesundheitssensor) | ✅ |
 | 7 | DHL über die offizielle API | ✅ |
 | 8 | Addon-Oberfläche hinter Ingress | ✅ |
 

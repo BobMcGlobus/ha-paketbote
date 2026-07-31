@@ -206,8 +206,12 @@ fortgeschrieben — Amazon korrigiert Stopp-Zahlen gelegentlich nach oben, und
 Rückwärtsübergänge müssen funktionieren. Das effektive Intervall ist das
 Minimum über alle Sendungen, plus Jitter.
 
-Ohne Stopp-Zahl endet die Leiter bei `WINDOW`; die beiden schnellsten Stufen
-entfallen dann ersatzlos. Zwischen `quiet_hours_start` und `_end` gilt immer das
+Die Stopp-Zahl steht **nicht** im sichtbaren Text der Tracking-Seite, sondern
+in deren eingebettetem JSON (`calloutMessage`) — die Kartenblase entsteht daraus
+erst später per JavaScript. Genau von dort wird sie gelesen, in beiden Sprachen
+(„2 stops away" / „2 Stopps entfernt"). Damit funktionieren `APPROACHING` und
+`IMMINENT`. Liefert Amazon für eine Sendung keine Zahl, endet die Leiter bei
+`WINDOW`. Zwischen `quiet_hours_start` und `_end` gilt immer das
 `IDLE`-Intervall.
 
 ## developer_mode

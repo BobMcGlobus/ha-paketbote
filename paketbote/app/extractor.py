@@ -72,6 +72,13 @@ _READ_TRACKER_JS = """
     // and the only place the recipient's town appears on the tracker.
     address: text('[class*="ddress"]'),
     canReschedule: !!document.querySelector('[class*="RESCHEDULE_DELIVERY"]'),
+    // The stop count never reaches the visible text: it sits in the page's
+    // own JSON and only becomes a map bubble once the map library loads.
+    callout: (() => {
+      const match = document.documentElement.innerHTML.match(
+        /"calloutMessage"\s*:\s*"([^"]{0,120})"/);
+      return match ? match[1] : null;
+    })(),
     milestones,
     cardText: all('.pt-card').join('\\n'),
   };
@@ -133,10 +140,14 @@ def extract_with_css(page: Page, today: date) -> ShipmentFacts:
         # Only Amazon Logistics offers rescheduling from the tracker.
         carrier = "AMZL"
 
-    # Stops and the time window have no dedicated container in any page seen so
-    # far; they are read out of the cards' text.
-    stops = parse_stops(card_text)
-    window = parse_window(card_text)
+    # The stop count comes from the map callout; the visible cards never carry
+    # it. Fall back to the card text in case Amazon ever prints it there.
+    callout = (raw.get("callout") or "").strip()
+    stops = parse_stops(callout) or parse_stops(card_text)
+
+    # The window belongs to the promise line. Reading it from the whole card
+    # would pick up any two numbers that share a dash.
+    window = parse_window(promise) or parse_window(card_text)
     expected = parse_expected_date(promise or card_text, today)
 
     facts = ShipmentFacts(
@@ -158,6 +169,7 @@ def extract_with_css(page: Page, today: date) -> ShipmentFacts:
             "carrier": bool(carrier),
             "stops": stops is not None,
             "window": window is not None,
+            "callout": bool(callout),
         },
     )
     return facts
