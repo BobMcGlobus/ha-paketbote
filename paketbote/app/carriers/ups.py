@@ -32,8 +32,6 @@ TRACK_URL = "https://onlinetools.ups.com/api/track/v1/details/{code}"
 
 HANDLES = {"ups"}
 
-# UPS answers from the tracking number alone.
-WANTS_POSTCODE = False
 
 # UPS's single-letter package status.
 STATUS_BY_TYPE = {

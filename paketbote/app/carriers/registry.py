@@ -33,6 +33,7 @@ CARRIERS: tuple[CarrierInfo, ...] = (
         "hermes",
         "Hermes",
         "https://www.myhermes.de/empfangen/sendungsverfolgung/sendungsinformation/#{code}",
+        automatic=True,
     ),
     CarrierInfo("gls", "GLS", "https://gls-group.com/DE/de/paketverfolgung?match={code}"),
     CarrierInfo("ups", "UPS", "https://www.ups.com/track?tracknum={code}", automatic=True),

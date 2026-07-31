@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.16.0
+
+- **DHL funktioniert jetzt ohne Schlüssel.** Der Status kommt von `dhl.de`,
+  derselben Adresse, die deren eigene Seite anfragt. Die Stufe steht dort als
+  Position, nicht als Wort, ist also sprachunabhängig
+- **Ein abgelehnter DHL-Schlüssel lässt die Sendung nicht mehr unbekannt**:
+  die Abfrage fällt auf `dhl.de` zurück, statt aufzugeben
+- **Hermes wird automatisch abgefragt**, ebenfalls ohne Schlüssel, inklusive
+  Zustellfenster
+- DPD, GLS, UPS und FedEx sperren automatisierte Zugriffe (Captcha,
+  Cloudflare, Akamai) und bleiben beim manuellen Eintragen
+- Abrufe über die Zustellerseite werden getrennt gezählt, damit sie DHLs
+  Tageskontingent nicht verbrauchen
+- Neue Einstellung *Von der Zustellerseite lesen*, und in den Einstellungen
+  steht je Zusteller, welcher Weg gerade greift
+
 ## 0.15.0
 
 - **UPS und FedEx werden automatisch abgefragt**, sobald ihre Zugangsdaten

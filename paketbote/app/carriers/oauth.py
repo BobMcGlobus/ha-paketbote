@@ -27,6 +27,10 @@ class TokenCarrier:
 
     name = ""
     token_url = ""
+    tier = "api"
+
+    # Neither UPS nor FedEx asks for one.
+    wants_postcode = False
 
     def __init__(self, client_id: str, client_secret: str, store=None) -> None:
         # Credentials pasted from a portal often carry whitespace.

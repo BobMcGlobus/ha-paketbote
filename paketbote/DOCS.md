@@ -194,6 +194,36 @@ den Einstellungen prüft je ein Knopf, ob die Zugangsdaten angenommen werden.
 Die Antwort nennt immer den HTTP-Status, damit ein abgelehnter Schlüssel von
 einer Störung zu unterscheiden ist.
 
+### Ohne Schlüssel: die Zustellerseite
+
+Nicht jeder Zusteller vergibt Schlüssel an Privatpersonen, und ein beantragter
+Schlüssel funktioniert nicht immer sofort. Deshalb gibt es einen zweiten Weg:
+die öffentliche Sendungsverfolgung des Zustellers, dieselbe Adresse, die deren
+eigene Webseite anfragt. Kein Schlüssel, keine Anmeldung.
+
+| Zusteller | Ohne Schlüssel | Anmerkung |
+|---|---|---|
+| **DHL** | ✅ `dhl.de` | Stufe als Position (`fortschritt`), also sprachunabhängig |
+| **Hermes** | ✅ `api.my-deliveries.de` | Nennt sogar ein Zustellfenster |
+| DPD | ❌ | Datenschutzabfrage mit Captcha davor |
+| GLS | ❌ | Cloudflare-Abfrage |
+| UPS | ❌ | Blockt automatisierte Zugriffe |
+| FedEx | ❌ | Blockt automatisierte Zugriffe (Akamai) |
+
+Für die vier gesperrten bleibt es beim manuellen Eintragen mit Link. Ein
+Umgehen der Captcha- und Bot-Abfragen ist bewusst nicht eingebaut: es wäre
+gegen die Nutzungsbedingungen und würde bei jeder Änderung erneut brechen.
+
+Ist für DHL ein Schlüssel hinterlegt, hat er Vorrang — er kommt mit
+zugesagten Grenzen und ändert sich nicht ohne Ankündigung. Wird er
+**abgelehnt**, fällt die Abfrage automatisch auf `dhl.de` zurück, statt die
+Sendung unbekannt zu lassen. Welcher Weg gerade greift, steht in den
+Einstellungen unter *Status*. Abrufe über die Zustellerseite werden getrennt
+gezählt, damit sie DHLs 250 Anfragen pro Tag nicht aufbrauchen.
+
+Der Weg über die Zustellerseite lässt sich mit *Von der Zustellerseite lesen*
+ganz abschalten.
+
 AMZL-Sendungen bleiben beim Amazon-Weg; dafür gibt es keine Alternative.
 
 ### CSS zuerst, LLM nur im Notfall

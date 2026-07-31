@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from datetime import date, datetime, time
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from app import web
 from app.models import STATE_DELIVERED, STATE_IMMINENT, STATE_PENDING, Shipment
@@ -264,16 +265,27 @@ class TestSettings(WebTestCase):
         self.assertEqual(stored["hidden_recipients"], ["eltern"])
         self.assertNotIn("poll_idle_minutes", stored)
 
-    def test_carrier_test_without_credentials(self):
-        for carrier in ("dhl", "ups", "fedex"):
+    def test_carriers_that_only_have_an_api_report_a_missing_key(self):
+        for carrier in ("ups", "fedex"):
             response = self.client.post(f"/api/test/{carrier}")
             self.assertEqual(response.status_code, 200, carrier)
             data = response.get_json()
             self.assertFalse(data["ok"], carrier)
             self.assertEqual(data["reason"], "no_key", carrier)
 
+    def test_carriers_readable_from_the_web_are_tested_without_a_key(self):
+        # No key configured, so this must reach the website tier — and it must
+        # not touch the network from a test.
+        with patch("app.carriers.scraping.requests.get",
+                   return_value=Mock(status_code=200, ok=True)) as get:
+            for carrier in ("dhl", "hermes"):
+                data = self.client.post(f"/api/test/{carrier}").get_json()
+                self.assertTrue(data["ok"], carrier)
+                self.assertIn("web", data["reason"], carrier)
+        self.assertTrue(get.called)
+
     def test_a_carrier_we_cannot_ask_is_a_404(self):
-        response = self.client.post("/api/test/hermes")
+        response = self.client.post("/api/test/dpd")
         self.assertEqual(response.status_code, 404)
         self.assertFalse(response.get_json()["ok"])
 

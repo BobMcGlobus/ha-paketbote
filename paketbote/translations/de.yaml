@@ -33,6 +33,14 @@ configuration:
   fedex_client_secret:
     name: FedEx-Secret-Key
     description: Gehört zum API-Key; beide zusammen schalten die FedEx-Abfrage frei.
+  hermes_poll_minutes:
+    name: 'Hermes: frühestens erneut fragen'
+    description: Hermes wird immer von der eigenen Sendungsverfolgung gelesen; es
+      gibt dort keinen Schlüssel zu beantragen.
+  web_fallback:
+    name: Von der Zustellerseite lesen
+    description: Wenn kein API-Schlüssel hinterlegt ist — oder er abgelehnt wird —
+      wird der Status von der öffentlichen Sendungsverfolgung des Zustellers geholt.
   poll_idle_minutes:
     name: 'Intervall: untätig'
     description: Abstand, wenn keine Sendung aktiv ist.

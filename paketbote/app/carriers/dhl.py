@@ -54,9 +54,6 @@ OUT_FOR_DELIVERY_MARKERS = (
 # Which carrier names this module answers for.
 HANDLES = {"dhl", "deutsche post", "dhl paket"}
 
-# DHL only reveals the delivery window when the recipient's postal code is
-# supplied, so it is worth trying the ones we know.
-WANTS_POSTCODE = True
 
 
 def handles(carrier: str | None) -> bool:
@@ -136,6 +133,8 @@ class DhlTracker:
     """Asks DHL, and keeps to their rate limits."""
 
     name = NAME
+    tier = "api"
+    wants_postcode = True
 
     # DHL accepts the key either as a header or as a query parameter. Which
     # one works is remembered, so a working setup costs one request.

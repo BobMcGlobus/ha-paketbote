@@ -431,7 +431,7 @@ class Paketbote:
 
         # Only DHL trades a postal code for the delivery window; the others
         # answer from the tracking number alone, so one call is enough.
-        if getattr(carrier_trackers.MODULES[key], "WANTS_POSTCODE", False):
+        if tracker.wants_postcode:
             postcodes = self._postcode_candidates(shipment)
         else:
             postcodes = [""]

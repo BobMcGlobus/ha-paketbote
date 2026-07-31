@@ -258,6 +258,8 @@ const T = {
       ups_poll_minutes: "UPS: frühestens erneut fragen",
       fedex_client_id: "FedEx-API-Key", fedex_client_secret: "FedEx-Secret-Key",
       fedex_poll_minutes: "FedEx: frühestens erneut fragen",
+      hermes_poll_minutes: "Hermes: frühestens erneut fragen",
+      web_fallback: "Ohne Schlüssel von der Zustellerseite lesen",
       llm_provider: "LLM-Anbieter", llm_model: "LLM-Modell", llm_api_key: "LLM-API-Schlüssel",
       developer_mode: "Entwicklermodus", dump_on_start: "Beim Start ausgeben", log_level: "Protokollstufe",
     },
@@ -265,6 +267,7 @@ const T = {
     settingsHint: "Die Add-on-Optionen setzen nur die Startwerte. Was hier steht, gilt.",
     poll: "Jetzt abrufen", polling: "Angefragt…", browser: "Browser öffnen",
     version: "Version", amazonCalls: "Amazon-Abrufe heute", dhlCalls: "DHL-Abrufe heute",
+    viaApi: "API", viaWeb: "Zustellerseite",
     llm: "LLM-Fallback", dhl: "DHL-Abfrage", on: "aktiv", off: "aus",
     loginTitle: "Amazon verlangt eine Anmeldung.", loginBody: "Im Browser erledigen, danach läuft es weiter.",
     throttledTitle: "Tageslimit erreicht.", throttledBody: "Bis Mitternacht wird nicht mehr abgerufen.",
@@ -320,6 +323,8 @@ const T = {
       ups_poll_minutes: "UPS: ask again no sooner than",
       fedex_client_id: "FedEx API key", fedex_client_secret: "FedEx secret key",
       fedex_poll_minutes: "FedEx: ask again no sooner than",
+      hermes_poll_minutes: "Hermes: ask again no sooner than",
+      web_fallback: "Read from the carrier's own site when no key is set",
       llm_provider: "LLM provider", llm_model: "LLM model", llm_api_key: "LLM API key",
       developer_mode: "Developer mode", dump_on_start: "Dump on start", log_level: "Log level",
     },
@@ -327,6 +332,7 @@ const T = {
     settingsHint: "The add-on options only seed the first run. What is set here wins.",
     poll: "Refresh now", polling: "Requested…", browser: "Open browser",
     version: "Version", amazonCalls: "Amazon calls today", dhlCalls: "DHL calls today",
+    viaApi: "API", viaWeb: "carrier site",
     llm: "LLM fallback", dhl: "DHL lookups", on: "on", off: "off",
     loginTitle: "Amazon wants you to sign in.", loginBody: "Do it in the browser; it continues afterwards.",
     throttledTitle: "Daily limit reached.", throttledBody: "No further polling until midnight.",
@@ -540,14 +546,14 @@ function renderSettings(data) {
     [L.version, data.version],
     [L.lastPoll, fmtAgo(data.status?.letzter_abruf)],
     [L.amazonCalls, `${b.amazon_used} / ${b.amazon_cap}`],
-    [L.dhl, f.dhl ? `${L.on} · ${b.dhl_used} / 250` : L.off],
     [L.llm, f.llm ? L.on : L.off],
   ];
+  const tiers = data.carrier_tier || {};
   for (const [key, name] of TESTABLE) {
-    if (key === "dhl") continue;
     const used = b.carrier_used?.[key] ?? 0;
+    const tier = tiers[key];
     rows.splice(rows.length - 1, 0,
-      [name, f[key] ? `${L.on} · ${used}` : L.off]);
+      [name, tier ? `${tier === "web" ? L.viaWeb : L.viaApi} · ${used}` : L.off]);
   }
   const eff = data.status?.effective;
   if (eff) {
@@ -606,7 +612,7 @@ async function loadOptions() {
 }
 
 // The carriers we can ask automatically, and so can offer to test.
-const TESTABLE = [["dhl", "DHL"], ["ups", "UPS"], ["fedex", "FedEx"]];
+const TESTABLE = [["dhl", "DHL"], ["hermes", "Hermes"], ["ups", "UPS"], ["fedex", "FedEx"]];
 
 function applyLabels(data) {
   $("hParcels").textContent = L.parcels;

@@ -34,6 +34,14 @@ configuration:
   fedex_client_secret:
     name: FedEx secret key
     description: Goes with the API key; together they enable FedEx lookups.
+  hermes_poll_minutes:
+    name: 'Hermes: ask again no sooner than'
+    description: Hermes is always read from their own tracking page; there is no key
+      to apply for.
+  web_fallback:
+    name: Read from the carrier's own site
+    description: When no API key is configured — or it is refused — the status is
+      read from the carrier's public tracking page.
   poll_idle_minutes:
     name: 'Interval: idle'
     description: Gap while nothing is in transit.

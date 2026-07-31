@@ -2,6 +2,12 @@
 
 One place that knows how to build the trackers from the settings and how to
 pick one, so the polling loop does not have to name carriers itself.
+
+Two ways of asking exist. A documented API needs credentials and comes with
+promises about rate limits and stability; the endpoint a carrier's own website
+uses needs nothing but breaks without notice. The API is preferred wherever
+there is one, and `Chain` falls through to the web when it is missing or
+refuses.
 """
 
 from __future__ import annotations
@@ -9,40 +15,61 @@ from __future__ import annotations
 import logging
 
 from . import dhl as dhl_module
+from . import dhl_web as dhl_web_module
 from . import fedex as fedex_module
+from . import hermes as hermes_module
 from . import ups as ups_module
+from .chain import Chain
 
 LOGGER = logging.getLogger(__name__)
 
-# key -> (module, how to build it from the config)
+# key -> the module that decides which carrier names it answers for
 MODULES = {
     "dhl": dhl_module,
+    "hermes": hermes_module,
     "ups": ups_module,
     "fedex": fedex_module,
 }
 
+# Carriers we can only read off their website, with no API to prefer.
+WEB_ONLY = ("hermes",)
+
 
 def build(config, store=None) -> dict:
-    """A tracker per carrier, whether or not it has credentials yet.
+    """A chain per carrier, whether or not it has credentials yet.
 
-    Building them all keeps the interface honest: a tracker without
-    credentials reports itself unavailable rather than going missing.
+    Building them all keeps the interface honest: a carrier with nothing
+    configured reports itself unavailable rather than going missing.
     """
+    web_allowed = getattr(config, "web_fallback", True)
+
+    def web(*members):
+        return list(members) if web_allowed else []
+
     return {
-        "dhl": dhl_module.DhlTracker(config.dhl_api_key, store),
-        "ups": ups_module.UpsTracker(config.ups_client_id, config.ups_client_secret, store),
-        "fedex": fedex_module.FedexTracker(
-            config.fedex_client_id, config.fedex_client_secret, store
-        ),
+        "dhl": Chain("DHL", [
+            dhl_module.DhlTracker(config.dhl_api_key, store),
+            *web(dhl_web_module.DhlWebTracker(store)),
+        ]),
+        "hermes": Chain("Hermes", web(hermes_module.HermesTracker(store))),
+        "ups": Chain("UPS", [
+            ups_module.UpsTracker(config.ups_client_id, config.ups_client_secret, store),
+        ]),
+        "fedex": Chain("FedEx", [
+            fedex_module.FedexTracker(
+                config.fedex_client_id, config.fedex_client_secret, store
+            ),
+        ]),
     }
 
 
 def credentials(config) -> dict:
-    """The credentials each tracker was built from, for spotting a change."""
+    """What each chain was built from, for spotting a change."""
     return {
         "dhl": (config.dhl_api_key,),
         "ups": (config.ups_client_id, config.ups_client_secret),
         "fedex": (config.fedex_client_id, config.fedex_client_secret),
+        "web": (getattr(config, "web_fallback", True),),
     }
 
 

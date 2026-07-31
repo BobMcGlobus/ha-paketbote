@@ -31,8 +31,6 @@ TRACK_URL = "https://apis.fedex.com/track/v1/trackingnumbers"
 
 HANDLES = {"fedex", "fedex express", "tnt"}
 
-# FedEx answers from the tracking number alone.
-WANTS_POSTCODE = False
 
 # FedEx's derivedCode: the same handful of stages whichever of their networks
 # actually carries the parcel.

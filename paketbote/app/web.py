@@ -121,9 +121,17 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
             shipments = store.all_shipments()
             health = store.field_health()
             used = store.requests_today()
+            # API and website reads are counted apart, but the interface only
+            # cares how often we asked this carrier at all.
             carrier_used = {
                 key: store.carrier_requests_today(key)
+                + store.carrier_requests_today(f"{key}_web")
                 for key in carrier_trackers.MODULES
+            }
+            # How each carrier is currently being read: api, web or nothing.
+            carrier_tier = {
+                key: chain.tier
+                for key, chain in carrier_trackers.build(config, store).items()
             }
             recipients = store.known_recipients()
         finally:
@@ -153,11 +161,13 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
                     "dhl_used": carrier_used["dhl"],
                     "carrier_used": carrier_used,
                 },
+                "carrier_tier": carrier_tier,
                 "selectors": health,
                 "features": {
                     "dhl": bool(config.dhl_api_key),
                     "ups": bool(config.ups_client_id and config.ups_client_secret),
                     "fedex": bool(config.fedex_client_id and config.fedex_client_secret),
+                    "hermes": config.web_fallback,
                     "llm": bool(config.llm_api_key),
                     "developer_mode": config.developer_mode,
                 },

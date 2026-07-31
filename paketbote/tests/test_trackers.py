@@ -14,7 +14,7 @@ class TestKeyFor(unittest.TestCase):
         self.assertEqual(trackers.key_for("FedEx"), "fedex")
 
     def test_a_carrier_we_cannot_ask_gets_no_module(self):
-        for other in ("Hermes", "DPD", "AMZL", "", None):
+        for other in ("DPD", "GLS", "AMZL", "", None):
             self.assertEqual(trackers.key_for(other), "", other)
 
     def test_no_two_modules_claim_the_same_name(self):
@@ -30,15 +30,34 @@ class TestBuild(unittest.TestCase):
         built = trackers.build(Config())
         self.assertEqual(set(built), set(trackers.MODULES))
 
-    def test_a_tracker_without_credentials_is_unavailable_not_missing(self):
-        for tracker in trackers.build(Config()).values():
-            self.assertFalse(tracker.available)
+    def test_carriers_with_only_an_api_need_credentials(self):
+        built = trackers.build(Config())
+        for key in ("ups", "fedex"):
+            self.assertFalse(built[key].available, key)
+
+    def test_carriers_readable_from_the_web_work_without_credentials(self):
+        built = trackers.build(Config())
+        for key in ("dhl", "hermes"):
+            self.assertTrue(built[key].available, key)
+            self.assertEqual(built[key].tier, "web", key)
+
+    def test_a_key_is_preferred_over_the_website(self):
+        self.assertEqual(trackers.build(Config(dhl_api_key="k"))["dhl"].tier, "api")
+
+    def test_turning_the_web_fallback_off_leaves_only_the_apis(self):
+        built = trackers.build(Config(web_fallback=False))
+        self.assertFalse(built["dhl"].available)
+        self.assertFalse(built["hermes"].available)
 
     def test_credentials_reach_the_trackers(self):
         config = Config(dhl_api_key="k", ups_client_id="i", ups_client_secret="s",
                         fedex_client_id="i", fedex_client_secret="s")
         for key, tracker in trackers.build(config).items():
             self.assertTrue(tracker.available, key)
+
+    def test_turning_the_web_fallback_off_shows_up_in_the_fingerprint(self):
+        self.assertNotEqual(trackers.credentials(Config()),
+                            trackers.credentials(Config(web_fallback=False)))
 
     def test_a_changed_secret_shows_up_in_the_fingerprint(self):
         before = trackers.credentials(Config())
@@ -48,10 +67,12 @@ class TestBuild(unittest.TestCase):
 
 class TestPollMinutes(unittest.TestCase):
     def test_each_carrier_has_its_own_interval(self):
-        config = Config(dhl_poll_minutes=30, ups_poll_minutes=45, fedex_poll_minutes=60)
+        config = Config(dhl_poll_minutes=30, ups_poll_minutes=45, fedex_poll_minutes=60,
+                        hermes_poll_minutes=90)
         self.assertEqual(trackers.poll_minutes(config, "dhl"), 30)
         self.assertEqual(trackers.poll_minutes(config, "ups"), 45)
         self.assertEqual(trackers.poll_minutes(config, "fedex"), 60)
+        self.assertEqual(trackers.poll_minutes(config, "hermes"), 90)
 
 
 class TestRegistryAgrees(unittest.TestCase):
