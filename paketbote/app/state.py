@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS shipments (
     expected_date   TEXT,
     state           TEXT,
     first_seen      TEXT,
-    last_seen       TEXT
+    last_seen       TEXT,
+    delivered_at    TEXT
 );
 
 CREATE TABLE IF NOT EXISTS field_health (
@@ -100,7 +101,7 @@ class Store:
         database written by an older build needs the new columns added.
         """
         existing = {row["name"] for row in self._db.execute("PRAGMA table_info(shipments)")}
-        for column in ("recipient", "delivery_address", "tracking_code", "source"):
+        for column in ("recipient", "delivery_address", "tracking_code", "source", "delivered_at"):
             if column not in existing:
                 self._db.execute(f"ALTER TABLE shipments ADD COLUMN {column} TEXT")
                 LOGGER.info("Added column %s to the shipments table", column)
@@ -116,8 +117,8 @@ class Store:
             INSERT INTO shipments (shipment_id, order_id, tracking_url, title, recipient,
                                    delivery_address, carrier, tracking_code, source,
                                    status, stops_remaining, window_start, window_end,
-                                   expected_date, state, first_seen, last_seen)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(
+                                   expected_date, state, delivered_at, first_seen, last_seen)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(
                 (SELECT first_seen FROM shipments WHERE shipment_id = ?), ?), ?)
             ON CONFLICT(shipment_id) DO UPDATE SET
                 order_id=excluded.order_id,
@@ -134,6 +135,7 @@ class Store:
                 window_end=excluded.window_end,
                 expected_date=excluded.expected_date,
                 state=excluded.state,
+                delivered_at=excluded.delivered_at,
                 last_seen=excluded.last_seen
             """,
             (
@@ -152,6 +154,7 @@ class Store:
                 _iso(shipment.window_end),
                 _iso(shipment.expected_date),
                 shipment.state,
+                _iso(shipment.delivered_at),
                 shipment.shipment_id,
                 _iso(shipment.last_seen or datetime.now()),
                 _iso(shipment.last_seen or datetime.now()),
@@ -184,6 +187,7 @@ class Store:
             expected_date=_as_date(row["expected_date"]),
             state=row["state"] or STATE_IDLE,
             last_seen=_as_datetime(row["last_seen"]),
+            delivered_at=_as_datetime(row["delivered_at"]),
         )
 
     # -- selector health ---------------------------------------------------

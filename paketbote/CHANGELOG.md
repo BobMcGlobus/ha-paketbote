@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.0
+
+- **Fehlalarm behoben:** „Selektoren greifen nicht" schlug schon an, wenn eine
+  einzige Seite nicht sauber gelesen wurde — meist nur eine, die noch nicht
+  fertig gerendert war. Jetzt zählt nur ein Zyklus, in dem **keine** Seite
+  gelesen werden konnte, und das muss zweimal hintereinander passieren
+- **Zugestellte Sendungen bleiben drei Tage sichtbar** und wandern dann ins
+  Archiv. Nach 90 Tagen werden sie verworfen. Bisher verschwanden sie sofort
+- **Manuelle Sendungen bearbeiten:** Bezeichnung und Empfänger nachträglich
+  änderbar
+- **Oberfläche neu strukturiert:** vier Bereiche (Sendungen, Archiv,
+  Hinzufügen, Mehr) mit App-Navigation am unteren Rand auf dem Handy und oben
+  auf dem Desktop. Einstellungen und Diagnose haben eine eigene Seite
+- Statusring je Sendung nach Vorbild der DHL-App: Füllstand zeigt die Stufe,
+  Farbe die Dringlichkeit, Symbol den Status. Dazu ein Key Visual im Kopf
+
 ## 0.9.0
 
 - **Sendungen manuell hinzufügen.** Sendungsnummer und Zusteller genügen; bei

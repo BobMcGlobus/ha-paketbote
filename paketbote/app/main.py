@@ -13,7 +13,7 @@ import re
 import signal
 import sys
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from . import __version__
@@ -41,6 +41,16 @@ LOGGER = logging.getLogger(__name__)
 # Amazon asked for a human, or blocked us. Back off hard, reset on success.
 CHALLENGE_BACKOFF_MINUTES = (5, 15, 60, 240)
 
+# Consecutive cycles in which no page could be read by CSS before the
+# selector-health sensor reports a problem.
+CSS_FAILURE_THRESHOLD = 2
+
+# How long a delivered parcel stays in view before it is archived.
+KEEP_DELIVERED_DAYS = 3
+
+# When archived parcels are finally dropped.
+ARCHIVE_DAYS = 90
+
 DUMP_DIR = Path("/config/dumps")
 
 # The interface runs as its own process; these two files are how it and the
@@ -61,6 +71,7 @@ class Paketbote:
         self._last_sources: list[str] = []
         self._last_poll: datetime | None = None
         self._dhl = DhlTracker(config.dhl_api_key, store)
+        self._css_failures = 0
 
     def stop(self, *_args: object) -> None:
         LOGGER.info("Shutting down")
@@ -128,6 +139,7 @@ class Paketbote:
         self._challenge_strikes = 0
         self._login_required = False
         self._last_poll = now
+        self._archive(now)
 
         shipments = self._store.all_shipments()
         states = [s.state for s in shipments if s.state != STATE_DELIVERED]
@@ -154,9 +166,9 @@ class Paketbote:
             # Manually added parcels were never on it and must survive.
             from_amazon = {s.shipment_id for s in stored if s.source == SOURCE_AMAZON}
             for shipment_id in from_amazon - seen:
-                LOGGER.info("%s is no longer listed; removing it", shipment_id)
-                self._publisher.retire_shipment(shipment_id)
-                self._store.forget(shipment_id)
+                vanished = known[shipment_id]
+                LOGGER.info("%s is no longer listed; treating it as delivered", shipment_id)
+                self._mark_delivered(vanished, now)
 
             active = scraper.select_active(overview.shipments)
             sources: list[str] = []
@@ -192,37 +204,67 @@ class Paketbote:
                 stored = known.get(shipment.shipment_id)
                 if stored is None:
                     continue
-                LOGGER.info("%s is reported delivered; removing it", stored.shipment_id)
-                stored.status = STATUS_DELIVERED
-                stored.state = STATE_DELIVERED
-                self._publisher.publish_shipment(stored)
-                self._publisher.retire_shipment(stored.shipment_id)
-                self._store.forget(stored.shipment_id)
+                if stored.delivered_at is None:
+                    LOGGER.info("%s is reported delivered", stored.shipment_id)
+                self._mark_delivered(stored, now)
 
             self._refresh_manual(now)
             self._last_sources = sources
+
+            # One page that did not finish rendering is not a markup change.
+            # Only a cycle in which *every* page failed counts, and it has to
+            # happen twice before the sensor cries wolf.
+            if sources:
+                if all(source != SOURCE_CSS for source in sources):
+                    self._css_failures += 1
+                else:
+                    self._css_failures = 0
 
     def _refresh_manual(self, now: datetime) -> None:
         """Parcels added by hand have no source page — only a carrier."""
         for shipment in self._store.all_shipments():
             if shipment.source == SOURCE_AMAZON or not shipment.tracking_code:
                 continue
+            if shipment.delivered_at is not None:
+                continue
 
-            before = shipment.status
             self._ask_carrier(shipment)
             shipment.state = state_for(shipment, now, self._config)
             shipment.last_seen = now
 
-            if shipment.status == STATUS_DELIVERED and before != STATUS_DELIVERED:
-                LOGGER.info("%s was delivered; removing it", shipment.shipment_id)
-                self._publisher.publish_shipment(shipment)
-                self._publisher.retire_shipment(shipment.shipment_id)
-                self._store.forget(shipment.shipment_id)
+            if shipment.status == STATUS_DELIVERED:
+                LOGGER.info("%s was delivered", shipment.shipment_id)
+                self._mark_delivered(shipment, now)
                 continue
 
             self._store.save(shipment)
             self._publisher.announce_shipment(shipment)
             self._publisher.publish_shipment(shipment)
+
+    def _mark_delivered(self, shipment: Shipment, now: datetime) -> None:
+        """Arrived. It stays in view for a few days before being archived."""
+        shipment.status = STATUS_DELIVERED
+        shipment.state = STATE_DELIVERED
+        if shipment.delivered_at is None:
+            shipment.delivered_at = now
+        self._store.save(shipment)
+        self._publisher.publish_shipment(shipment)
+
+    def _archive(self, now: datetime) -> None:
+        """Take delivered parcels out of Home Assistant, and eventually out of
+        the database. They remain visible in the interface in between."""
+        for shipment in self._store.all_shipments():
+            if shipment.delivered_at is None:
+                continue
+            age = now - shipment.delivered_at
+            if age > timedelta(days=ARCHIVE_DAYS):
+                LOGGER.info("Dropping %s from the archive", shipment.shipment_id)
+                self._publisher.retire_shipment(shipment.shipment_id)
+                self._store.forget(shipment.shipment_id)
+            elif age > timedelta(days=KEEP_DELIVERED_DAYS):
+                if shipment.shipment_id in self._publisher.announced:
+                    LOGGER.info("Archiving %s", shipment.shipment_id)
+                    self._publisher.retire_shipment(shipment.shipment_id)
 
     def _read(self, scraper: Scraper, shipment: Shipment, today: date) -> ShipmentFacts:
         def reader(page, text):
@@ -341,8 +383,7 @@ class Paketbote:
                 "login_erforderlich": self._login_required,
                 "gedrosselt": self._throttled,
                 "extraktionsmethode": self._extraction_method(),
-                "selektoren_defekt": bool(self._last_sources)
-                and any(source != SOURCE_CSS for source in self._last_sources),
+                "selektoren_defekt": self._css_failures >= CSS_FAILURE_THRESHOLD,
                 "requests_heute": self._store.requests_today(),
             }
         )

@@ -34,19 +34,27 @@ Im Panel sitzt ein voll funktionsfähiger, eingeloggter Browser.
 
 ## Die Oberfläche
 
-Das Panel in der Sidebar zeigt jetzt die Sendungsübersicht: was unterwegs ist,
-für wen, wann erwartet, mit welchem Zusteller. Dazu Warnungen, wenn Amazon eine
-Anmeldung verlangt, das Tageslimit erreicht ist oder die Selektoren nicht mehr
-greifen.
+Das Panel ist in vier Bereiche geteilt, auf dem Handy über eine Leiste am
+unteren Rand erreichbar, auf dem Desktop über eine Leiste oben.
 
-- **Jetzt abrufen** stößt einen Zyklus sofort an, statt auf das nächste
-  Intervall zu warten.
-- **Browser öffnen** führt zum bisherigen Browser-Panel — für Login, MFA und
-  Captchas.
-- **Sendung manuell hinzufügen** nimmt eine Sendungsnummer samt Zusteller auf,
-  für Pakete, die keine Quelle kennt. Bei DHL wird der Status danach automatisch
-  geholt, sofern ein Schlüssel hinterlegt ist; bei den übrigen Zustellern
-  entsteht ein Link zur jeweiligen Sendungsverfolgung.
+| Bereich | Inhalt |
+|---|---|
+| **Sendungen** | Was unterwegs ist, mit Statusring je Paket. Warnungen bei nötiger Anmeldung, Tageslimit oder defekten Selektoren |
+| **Archiv** | Zugestelltes: die letzten drei Tage sichtbar, danach im Archiv |
+| **Hinzufügen** | Sendung von Hand eintragen |
+| **Mehr** | Status, Trefferquoten der Selektoren, Sofortabruf, Zugang zum Browser |
+
+Jede Sendung trägt einen Ring, dessen Füllstand die Stufe zeigt — bestellt,
+versandt, in Zustellung, zugestellt — mit passendem Symbol und Farbe. Bei
+Handlungsbedarf wechselt er auf Gelb, bei Problemen auf Rot.
+
+Manuell angelegte Sendungen lassen sich in der Liste **bearbeiten**
+(Bezeichnung und Empfänger) und entfernen. Alles Übrige kommt vom Zusteller
+und wird deshalb nicht von Hand überschrieben.
+
+**Zugestellte Sendungen** bleiben drei Tage sichtbar und wandern dann ins
+Archiv; aus Home Assistant verschwinden sie zum selben Zeitpunkt. Nach 90
+Tagen werden sie endgültig verworfen.
 
 Die Oberfläche läuft als eigener Prozess und liest nur mit. Ein Fehler dort
 kann die Abrufschleife nicht anhalten.

@@ -81,6 +81,9 @@ class Shipment:
     expected_date: date | None = None
     state: str = STATE_IDLE
     last_seen: datetime | None = None
+    # Set when the parcel arrived. It stays visible for a few days after
+    # that, then moves to the archive.
+    delivered_at: datetime | None = None
 
 
 @dataclass

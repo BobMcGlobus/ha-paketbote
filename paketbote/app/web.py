@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
@@ -17,7 +17,14 @@ from flask import Flask, jsonify, request, send_from_directory
 from . import __version__
 from .carriers import registry
 from .config import Config
-from .models import SOURCE_MANUAL, STATE_DELIVERED, Shipment, sanitise_id, shorten
+from .models import (
+    SOURCE_MANUAL,
+    STATE_DELIVERED,
+    STATUS_DELIVERED,
+    Shipment,
+    sanitise_id,
+    shorten,
+)
 from .state import DEFAULT_DB_PATH, Store
 
 LOGGER = logging.getLogger(__name__)
@@ -28,6 +35,9 @@ UI_DIR = Path(__file__).parent / "ui"
 
 LISTEN_HOST = "127.0.0.1"
 LISTEN_PORT = 8099
+
+# Mirrors the scheduler: delivered parcels stay in view this long.
+KEEP_DELIVERED_DAYS = 3
 
 
 def read_status() -> dict:
@@ -56,7 +66,23 @@ def shipment_payload(shipment) -> dict:
         "expected_date": shipment.expected_date.isoformat() if shipment.expected_date else None,
         "tracking_url": shipment.tracking_url,
         "last_seen": shipment.last_seen.isoformat() if shipment.last_seen else None,
+        "delivered_at": shipment.delivered_at.isoformat() if shipment.delivered_at else None,
+        "bucket": bucket_of(shipment),
     }
+
+
+def bucket_of(shipment) -> str:
+    """Which section of the interface this parcel belongs in."""
+    delivered = shipment.state == STATE_DELIVERED or shipment.status == STATUS_DELIVERED
+    if not delivered and shipment.delivered_at is None:
+        return "current"
+
+    # Rows written before delivered_at existed carry no timestamp; fall back to
+    # when they were last seen, and archive them if even that is missing.
+    stamp = shipment.delivered_at or shipment.last_seen
+    if stamp is None or datetime.now() - stamp > timedelta(days=KEEP_DELIVERED_DAYS):
+        return "archive"
+    return "delivered"
 
 
 def _request_poll() -> bool:
@@ -93,7 +119,8 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
         shipments.sort(
             key=lambda s: (s.expected_date is None, s.expected_date, s.title.lower())
         )
-        active = [s for s in shipments if s.state != STATE_DELIVERED]
+        buckets = [bucket_of(s) for s in shipments]
+        active = [s for s, b in zip(shipments, buckets) if b == "current"]
 
         return jsonify(
             {
@@ -101,7 +128,12 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
                 "now": datetime.now().astimezone().isoformat(),
                 "status": read_status(),
                 "shipments": [shipment_payload(s) for s in shipments],
-                "counts": {"total": len(shipments), "active": len(active)},
+                "counts": {
+                    "total": len(shipments),
+                    "active": len(active),
+                    "delivered": buckets.count("delivered"),
+                    "archive": buckets.count("archive"),
+                },
                 "budget": {
                     "amazon_used": used,
                     "amazon_cap": config.daily_request_cap,
@@ -153,6 +185,30 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
         LOGGER.info("Added manual shipment %s (%s)", shipment_id, info.name)
         _request_poll()
         return jsonify({"ok": True, "shipment_id": shipment_id}), 201
+
+    @app.patch("/api/shipments/<shipment_id>")
+    def edit_shipment(shipment_id: str):
+        """Only label and recipient: everything else comes from a carrier."""
+        data = request.get_json(silent=True) or {}
+
+        store = Store(db_path)
+        try:
+            found = {s.shipment_id: s for s in store.all_shipments()}.get(shipment_id)
+            if found is None:
+                return jsonify({"ok": False, "error": "not_found"}), 404
+            if found.source != SOURCE_MANUAL:
+                return jsonify({"ok": False, "error": "not_editable"}), 400
+
+            if "title" in data:
+                found.title = shorten(str(data["title"] or "").strip()) or found.tracking_code
+            if "recipient" in data:
+                found.recipient = str(data["recipient"] or "").strip()
+            store.save(found)
+        finally:
+            store.close()
+
+        LOGGER.info("Updated shipment %s", shipment_id)
+        return jsonify({"ok": True})
 
     @app.delete("/api/shipments/<shipment_id>")
     def remove_shipment(shipment_id: str):

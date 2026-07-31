@@ -6,174 +6,288 @@
 <title>Paketbote</title>
 <style>
   :root {
-    --bg: #f4f5f7; --card: #ffffff; --line: #e3e5e9; --text: #16181d;
-    --muted: #6b7280; --accent: #5b57ff; --ok: #1a9f5a; --warn: #c77700;
-    --bad: #cf3232; --chip: #eef0f4;
+    --bg: #f5f6f9; --card: #fff; --line: #e5e7ec; --text: #14161b; --muted: #6b7280;
+    --accent: #5b57ff; --accent-soft: #ecebff; --ok: #17a463; --ok-soft: #e4f6ec;
+    --warn: #c07800; --warn-soft: #fbf0dd; --bad: #d13b3b; --bad-soft: #fbe9e9;
+    --chip: #eef0f5; --shadow: 0 1px 2px rgba(16,18,24,.06), 0 8px 24px -12px rgba(16,18,24,.18);
+    --nav: rgba(255,255,255,.86);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #14161a; --card: #1c1f25; --line: #2a2e37; --text: #e8eaed;
-      --muted: #9aa1ad; --accent: #8b87ff; --ok: #3fbe7c; --warn: #e0a13a;
-      --bad: #f06a6a; --chip: #262a32;
+      --bg: #101216; --card: #191c22; --line: #272b34; --text: #e9ebef; --muted: #949ba7;
+      --accent: #8b87ff; --accent-soft: #23234a; --ok: #45c583; --ok-soft: #14301f;
+      --warn: #e2a748; --warn-soft: #33260f; --bad: #f37272; --bad-soft: #351a1a;
+      --chip: #232830; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.7);
+      --nav: rgba(20,22,27,.86);
     }
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) 2rem env(safe-area-inset-left);
+    padding-bottom: calc(4.6rem + env(safe-area-inset-bottom));
   }
-  .wrap { max-width: 60rem; margin: 0 auto; padding: 1rem; }
-  header { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; flex-wrap: wrap; }
-  h1 { font-size: 1.35rem; margin: 0; font-weight: 650; letter-spacing: -.01em; }
-  .dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--muted); flex: none; }
-  .dot.live { background: var(--ok); }
-  .spacer { flex: 1; }
-  button, .btn, select, input {
-    font: inherit; border: 1px solid var(--line); border-radius: .6rem;
-    padding: .5rem .8rem; background: var(--card); color: var(--text);
-  }
-  button, .btn { font-weight: 550; cursor: pointer; text-decoration: none; display: inline-block; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button:disabled { opacity: .55; cursor: default; }
-  button.link { border: 0; background: none; color: var(--muted); padding: 0; font-weight: 500; text-decoration: underline; }
-  button.link:hover { color: var(--bad); }
+  .wrap { max-width: 56rem; margin: 0 auto; padding: 1rem 1rem 0; }
+  h2 { font-size: 1.05rem; margin: 1.6rem 0 .7rem; font-weight: 650; letter-spacing: -.01em; }
+  h2:first-child { margin-top: .25rem; }
+  .muted { color: var(--muted); }
 
-  .alert { border-radius: .7rem; padding: .8rem 1rem; margin-bottom: .75rem;
-           display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; border: 1px solid transparent; }
-  .alert.bad  { background: color-mix(in srgb, var(--bad) 14%, var(--card)); border-color: var(--bad); }
-  .alert.warn { background: color-mix(in srgb, var(--warn) 14%, var(--card)); border-color: var(--warn); }
+  /* key visual */
+  .hero {
+    border-radius: 1.1rem; padding: 1.1rem 1.25rem; margin-bottom: 1rem; color: #fff;
+    background: linear-gradient(135deg, #6b66ff 0%, #4a45d6 55%, #262croof 100%);
+    background: linear-gradient(135deg, #6b66ff 0%, #4a45d6 55%, #2b2a6b 100%);
+    display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow);
+  }
+  .hero .txt { flex: 1; min-width: 0; }
+  .hero .eyebrow { font-size: .78rem; opacity: .8; letter-spacing: .06em; text-transform: uppercase; }
+  .hero .big { font-size: 1.5rem; font-weight: 680; letter-spacing: -.02em; line-height: 1.25; }
+  .hero .sub { font-size: .88rem; opacity: .85; }
+  .hero svg { flex: none; opacity: .95; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: .55rem; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: .85rem; padding: .7rem .85rem; }
+  .stat .v { font-size: 1.4rem; font-weight: 660; letter-spacing: -.02em; }
+  .stat .k { color: var(--muted); font-size: .78rem; }
+
+  .alert { border-radius: .85rem; padding: .8rem 1rem; margin-bottom: .6rem;
+           display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; border: 1px solid transparent; }
+  .alert.bad { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+  .alert.warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
   .alert strong { font-weight: 650; }
 
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: .6rem; margin-bottom: 1.1rem; }
-  .stat { background: var(--card); border: 1px solid var(--line); border-radius: .7rem; padding: .7rem .85rem; }
-  .stat .v { font-size: 1.5rem; font-weight: 650; letter-spacing: -.02em; }
-  .stat .k { color: var(--muted); font-size: .8rem; }
+  button, .btn, select, input {
+    font: inherit; border: 1px solid var(--line); border-radius: .65rem;
+    padding: .5rem .8rem; background: var(--card); color: var(--text);
+  }
+  button, .btn { font-weight: 560; cursor: pointer; text-decoration: none; display: inline-block; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.link { border: 0; background: none; color: var(--muted); padding: .1rem 0;
+                font-weight: 500; font-size: .85rem; text-decoration: underline; }
 
-  .ship { background: var(--card); border: 1px solid var(--line); border-radius: .7rem; padding: .85rem 1rem; margin-bottom: .6rem; }
-  .ship .top { display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; }
-  .ship .title { font-weight: 600; flex: 1; min-width: 12rem; }
-  .ship .meta { color: var(--muted); font-size: .85rem; margin-top: .35rem;
-                display: flex; gap: .4rem .9rem; flex-wrap: wrap; align-items: center; }
-  .badge { font-size: .78rem; font-weight: 600; padding: .15rem .5rem; border-radius: .4rem; background: var(--chip); color: var(--text); white-space: nowrap; }
-  .badge.now  { background: color-mix(in srgb, var(--ok) 22%, var(--card)); color: var(--ok); }
-  .badge.soon { background: color-mix(in srgb, var(--warn) 22%, var(--card)); color: var(--warn); }
+  /* shipment card with status ring */
+  .ship { background: var(--card); border: 1px solid var(--line); border-radius: .95rem;
+          padding: .85rem; margin-bottom: .6rem; display: flex; gap: .85rem; box-shadow: var(--shadow); }
+  .ring { position: relative; width: 3rem; height: 3rem; flex: none; }
+  /* Only the progress arc is rotated. Catching the glyph too turns a tick
+     into a chevron and a truck into a padlock. */
+  .ring > svg { transform: rotate(-90deg); display: block; }
+  .ring .glyph { position: absolute; inset: 0; display: grid; place-items: center; }
+  .body { flex: 1; min-width: 0; }
+  .body .title { font-weight: 620; line-height: 1.35; overflow-wrap: anywhere; }
+  .body .state { font-size: .85rem; font-weight: 560; margin-top: .1rem; }
+  .body .meta { color: var(--muted); font-size: .84rem; margin-top: .3rem;
+                display: flex; gap: .3rem .8rem; flex-wrap: wrap; align-items: center; }
+  .badge { font-size: .76rem; font-weight: 600; padding: .1rem .45rem; border-radius: .38rem;
+           background: var(--chip); color: var(--text); white-space: nowrap; }
   a { color: var(--accent); }
   .empty { color: var(--muted); text-align: center; padding: 2.5rem 1rem; }
 
-  details.add { background: var(--card); border: 1px solid var(--line); border-radius: .7rem; margin: 1rem 0 .6rem; }
-  details.add summary { padding: .75rem 1rem; cursor: pointer; font-weight: 600; }
-  details.add .body { padding: 0 1rem 1rem; display: grid; gap: .6rem;
-                      grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); align-items: end; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: .95rem;
+           padding: .9rem 1rem; margin-bottom: .6rem; box-shadow: var(--shadow); }
+  .row { display: flex; justify-content: space-between; gap: 1rem; padding: .35rem 0; }
+  .row + .row { border-top: 1px solid var(--line); }
+  .row .k { color: var(--muted); }
+  .grid { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); align-items: end; }
   .field { display: flex; flex-direction: column; gap: .25rem; }
-  .field label { font-size: .8rem; color: var(--muted); }
+  .field label { font-size: .78rem; color: var(--muted); }
   .field input, .field select { width: 100%; }
-  .msg { grid-column: 1 / -1; font-size: .85rem; color: var(--bad); }
-  footer { color: var(--muted); font-size: .8rem; margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; }
+  .msg { grid-column: 1/-1; font-size: .85rem; color: var(--bad); }
+  details.add summary { cursor: pointer; font-weight: 620; padding: .15rem 0 .5rem; }
+
+  /* navigation */
+  nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    background: var(--nav); backdrop-filter: blur(14px);
+    border-top: 1px solid var(--line);
+    padding: .35rem .5rem calc(.35rem + env(safe-area-inset-bottom));
+    display: flex; justify-content: space-around;
+  }
+  nav a { display: flex; flex-direction: column; align-items: center; gap: .1rem;
+          font-size: .68rem; font-weight: 560; color: var(--muted); text-decoration: none;
+          padding: .35rem .6rem; border-radius: .6rem; min-width: 4rem; }
+  nav a.on { color: var(--accent); }
+  nav .pill { position: absolute; top: .15rem; right: .55rem; background: var(--accent); color: #fff;
+              font-size: .6rem; border-radius: 1rem; padding: 0 .28rem; }
+  nav a { position: relative; }
+  @media (min-width: 44rem) {
+    body { padding-bottom: 2rem; }
+    nav { position: sticky; top: 0; bottom: auto; justify-content: center; gap: .25rem;
+          border-top: 0; border-bottom: 1px solid var(--line); padding: .4rem; }
+    nav a { flex-direction: row; gap: .45rem; font-size: .9rem; padding: .45rem .85rem; }
+  }
+  [data-page] { display: none; }
+  [data-page].on { display: block; }
 </style>
 </head>
 <body>
+
+<nav id="nav"></nav>
+
 <div class="wrap">
-  <header>
-    <span class="dot" id="dot"></span>
-    <h1>Paketbote</h1>
-    <span class="spacer"></span>
-    <button id="poll"></button>
-    <a class="btn" id="browserLink" href="browser/" target="_blank" rel="noopener"></a>
-  </header>
-
-  <div id="alerts"></div>
-  <div class="stats" id="stats"></div>
-
-  <details class="add" id="addBox">
-    <summary id="addSummary"></summary>
-    <div class="body">
-      <div class="field"><label for="code"></label><input id="code" autocomplete="off" inputmode="latin"></div>
-      <div class="field"><label for="carrier"></label><select id="carrier"></select></div>
-      <div class="field"><label for="title"></label><input id="title" autocomplete="off"></div>
-      <div class="field"><label for="recipient"></label><input id="recipient" autocomplete="off"></div>
-      <div class="field"><label>&nbsp;</label><button class="primary" id="addBtn"></button></div>
-      <div class="msg" id="addMsg"></div>
+  <section data-page="parcels" class="on">
+    <div class="hero">
+      <div class="txt">
+        <div class="eyebrow">Paketbote</div>
+        <div class="big" id="heroBig"></div>
+        <div class="sub" id="heroSub"></div>
+      </div>
+      <svg width="62" height="62" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+        <path d="M24 5 43 14v20L24 43 5 34V14L24 5Z" fill="#fff" fill-opacity=".16"/>
+        <path d="M24 5 43 14 24 23 5 14 24 5Z" fill="#fff" fill-opacity=".38"/>
+        <path d="M24 23v20M43 14v20L24 43M5 14v20l19 9" stroke="#fff" stroke-opacity=".7" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M14.5 9.5 33.5 18.5" stroke="#fff" stroke-opacity=".55" stroke-width="3"/>
+      </svg>
     </div>
-  </details>
+    <div id="alerts"></div>
+    <div class="stats" id="stats"></div>
+    <h2 id="hParcels"></h2>
+    <div id="ships"></div>
+  </section>
 
-  <div id="ships"></div>
-  <footer id="foot"></footer>
+  <section data-page="archive">
+    <h2 id="hDelivered"></h2>
+    <div id="delivered"></div>
+    <h2 id="hArchive"></h2>
+    <div id="archive"></div>
+  </section>
+
+  <section data-page="add">
+    <h2 id="hAdd"></h2>
+    <div class="panel">
+      <div class="grid">
+        <div class="field"><label for="code"></label><input id="code" autocomplete="off"></div>
+        <div class="field"><label for="carrier"></label><select id="carrier"></select></div>
+        <div class="field"><label for="title"></label><input id="title" autocomplete="off"></div>
+        <div class="field"><label for="recipient"></label><input id="recipient" autocomplete="off"></div>
+        <div class="field"><label>&nbsp;</label><button class="primary" id="addBtn"></button></div>
+        <div class="msg" id="addMsg"></div>
+      </div>
+    </div>
+    <p class="muted" id="addHint"></p>
+  </section>
+
+  <section data-page="settings">
+    <h2 id="hStatus"></h2>
+    <div class="panel" id="diag"></div>
+    <h2 id="hSelectors"></h2>
+    <div class="panel" id="selectors"></div>
+    <h2 id="hActions"></h2>
+    <div class="panel">
+      <p class="muted" id="settingsHint"></p>
+      <button id="poll"></button>
+      <a class="btn" id="browserLink" href="browser/" target="_blank" rel="noopener"></a>
+    </div>
+  </section>
 </div>
 
 <script>
-const STRINGS = {
+const T = {
   de: {
-    poll: "Jetzt abrufen", polling: "Angefragt…", browser: "Browser öffnen",
-    active: "Aktive Pakete", today: "Heute erwartet", stops: "Nächste Stopps",
-    lastPoll: "Letzter Abruf", never: "nie", justNow: "gerade eben",
-    minsAgo: (n) => `vor ${n} min`, hoursAgo: (n) => `vor ${n} h`, daysAgo: (n) => `vor ${n} Tagen`,
-    empty: "Nichts unterwegs.", addTitle: "Sendung manuell hinzufügen",
+    nav: { parcels: "Sendungen", archive: "Archiv", add: "Hinzufügen", settings: "Mehr" },
+    heroNone: "Nichts unterwegs", heroOne: "1 Paket unterwegs", heroMany: (n) => `${n} Pakete unterwegs`,
+    heroSubToday: (n) => n === 1 ? "1 davon heute erwartet" : `${n} davon heute erwartet`,
+    heroSubNone: "Alles zugestellt.",
+    active: "Aktiv", today: "Heute", stops: "Stopps", lastPoll: "Letzter Abruf",
+    never: "nie", justNow: "gerade eben", minsAgo: (n) => `vor ${n} min`,
+    hoursAgo: (n) => `vor ${n} h`, daysAgo: (n) => `vor ${n} Tagen`,
+    parcels: "Unterwegs", empty: "Nichts unterwegs.",
+    delivered: "Zuletzt zugestellt", deliveredEmpty: "In den letzten Tagen nichts angekommen.",
+    archive: "Archiv", archiveEmpty: "Archiv ist leer.",
+    add: "Sendung hinzufügen",
+    addHint: "Bei DHL wird der Status danach automatisch geholt, sofern ein API-Schlüssel hinterlegt ist. Bei den übrigen Zustellern entsteht ein Link zur Sendungsverfolgung.",
     code: "Sendungsnummer", carrier: "Zusteller", title: "Bezeichnung (optional)",
-    recipient: "Empfänger (optional)", add: "Hinzufügen", adding: "Wird angelegt…",
+    recipient: "Empfänger (optional)", addBtn: "Hinzufügen", adding: "Wird angelegt…",
+    edit: "Bearbeiten", save: "Speichern", cancel: "Abbrechen",
     remove: "Entfernen", removeConfirm: "Diese Sendung entfernen?",
-    errCode: "Bitte eine Sendungsnummer eingeben.", errCarrier: "Bitte einen Zusteller wählen.",
-    errGeneric: "Konnte nicht gespeichert werden.",
-    loginTitle: "Amazon verlangt eine Anmeldung.",
-    loginBody: "Im Browser erledigen, danach läuft es von selbst weiter.",
-    throttledTitle: "Tageslimit erreicht.", throttledBody: "Bis Mitternacht wird nicht mehr abgerufen.",
-    selectorsTitle: "Selektoren greifen nicht.",
-    selectorsBody: "Amazon hat vermutlich das Markup geändert — ein Update ist fällig.",
-    openAmazon: "Bei Amazon ansehen", track: "Sendung verfolgen", manual: "manuell",
+    errCode: "Bitte eine Sendungsnummer eingeben.", errGeneric: "Konnte nicht gespeichert werden.",
+    status: "Status", selectors: "Selektoren", actions: "Aktionen",
+    settingsHint: "Die Konfiguration liegt in den Add-on-Optionen von Home Assistant.",
+    poll: "Jetzt abrufen", polling: "Angefragt…", browser: "Browser öffnen",
     version: "Version", amazonCalls: "Amazon-Abrufe heute", dhlCalls: "DHL-Abrufe heute",
-    llmOff: "LLM-Fallback: aus", today0: "heute", tomorrow: "morgen",
+    llm: "LLM-Fallback", dhl: "DHL-Abfrage", on: "aktiv", off: "aus",
+    loginTitle: "Amazon verlangt eine Anmeldung.", loginBody: "Im Browser erledigen, danach läuft es weiter.",
+    throttledTitle: "Tageslimit erreicht.", throttledBody: "Bis Mitternacht wird nicht mehr abgerufen.",
+    selectorsTitle: "Selektoren greifen nicht.", selectorsBody: "Amazon hat vermutlich das Markup geändert.",
+    openAmazon: "Bei Amazon", track: "Verfolgen", manual: "manuell",
+    today0: "heute", tomorrow: "morgen", noneYet: "noch keine Daten",
     states: { IDLE: "Wartet", PENDING: "Heute erwartet", WINDOW: "Im Zustellfenster",
               APPROACHING: "Kommt näher", IMMINENT: "Gleich da", DELIVERED: "Zugestellt" },
     statuses: { ordered: "Bestellt", shipped: "Versandt", out_for_delivery: "In Zustellung",
                 delivered: "Zugestellt", exception: "Problem", unknown: "Unbekannt" },
-    stopsLeft: (n) => `noch ${n} Stopps`,
+    stopsLeft: (n) => `noch ${n} Stopps`, deliveredOn: (d) => `zugestellt ${d}`,
   },
   en: {
-    poll: "Refresh now", polling: "Requested…", browser: "Open browser",
-    active: "Active parcels", today: "Due today", stops: "Stops away",
-    lastPoll: "Last poll", never: "never", justNow: "just now",
-    minsAgo: (n) => `${n} min ago`, hoursAgo: (n) => `${n} h ago`, daysAgo: (n) => `${n} days ago`,
-    empty: "Nothing on its way.", addTitle: "Add a shipment manually",
+    nav: { parcels: "Parcels", archive: "Archive", add: "Add", settings: "More" },
+    heroNone: "Nothing on its way", heroOne: "1 parcel on its way", heroMany: (n) => `${n} parcels on their way`,
+    heroSubToday: (n) => n === 1 ? "1 of them due today" : `${n} of them due today`,
+    heroSubNone: "Everything delivered.",
+    active: "Active", today: "Today", stops: "Stops", lastPoll: "Last poll",
+    never: "never", justNow: "just now", minsAgo: (n) => `${n} min ago`,
+    hoursAgo: (n) => `${n} h ago`, daysAgo: (n) => `${n} days ago`,
+    parcels: "On their way", empty: "Nothing on its way.",
+    delivered: "Recently delivered", deliveredEmpty: "Nothing arrived in the last few days.",
+    archive: "Archive", archiveEmpty: "The archive is empty.",
+    add: "Add a shipment",
+    addHint: "DHL is then polled automatically where an API key is configured. The other carriers get a tracking link.",
     code: "Tracking number", carrier: "Carrier", title: "Label (optional)",
-    recipient: "Recipient (optional)", add: "Add", adding: "Adding…",
+    recipient: "Recipient (optional)", addBtn: "Add", adding: "Adding…",
+    edit: "Edit", save: "Save", cancel: "Cancel",
     remove: "Remove", removeConfirm: "Remove this shipment?",
-    errCode: "Please enter a tracking number.", errCarrier: "Please pick a carrier.",
-    errGeneric: "Could not be saved.",
-    loginTitle: "Amazon wants you to sign in.",
-    loginBody: "Do it in the browser; everything continues by itself afterwards.",
-    throttledTitle: "Daily limit reached.", throttledBody: "No further polling until midnight.",
-    selectorsTitle: "Selectors no longer match.",
-    selectorsBody: "Amazon has probably changed its markup — an update is due.",
-    openAmazon: "View on Amazon", track: "Track shipment", manual: "manual",
+    errCode: "Please enter a tracking number.", errGeneric: "Could not be saved.",
+    status: "Status", selectors: "Selectors", actions: "Actions",
+    settingsHint: "Configuration lives in the add-on options in Home Assistant.",
+    poll: "Refresh now", polling: "Requested…", browser: "Open browser",
     version: "Version", amazonCalls: "Amazon calls today", dhlCalls: "DHL calls today",
-    llmOff: "LLM fallback: off", today0: "today", tomorrow: "tomorrow",
+    llm: "LLM fallback", dhl: "DHL lookups", on: "on", off: "off",
+    loginTitle: "Amazon wants you to sign in.", loginBody: "Do it in the browser; it continues afterwards.",
+    throttledTitle: "Daily limit reached.", throttledBody: "No further polling until midnight.",
+    selectorsTitle: "Selectors no longer match.", selectorsBody: "Amazon has probably changed its markup.",
+    openAmazon: "On Amazon", track: "Track", manual: "manual",
+    today0: "today", tomorrow: "tomorrow", noneYet: "no data yet",
     states: { IDLE: "Waiting", PENDING: "Due today", WINDOW: "In delivery window",
               APPROACHING: "Getting close", IMMINENT: "Almost there", DELIVERED: "Delivered" },
     statuses: { ordered: "Ordered", shipped: "Shipped", out_for_delivery: "Out for delivery",
                 delivered: "Delivered", exception: "Problem", unknown: "Unknown" },
-    stopsLeft: (n) => `${n} stops away`,
+    stopsLeft: (n) => `${n} stops away`, deliveredOn: (d) => `delivered ${d}`,
   },
 };
 
-let L = STRINGS.de;
-const URGENT = new Set(["IMMINENT", "APPROACHING"]);
-let carriersLoaded = false;
+const ICONS = {
+  box: '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+  truck: '<path d="M14 17V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h1"/><path d="M14 17h-4"/><path d="M18 17h2a1 1 0 0 0 1-1v-3.3a1 1 0 0 0-.2-.6l-2.8-3.7a1 1 0 0 0-.8-.4H14"/><circle cx="16.5" cy="17.5" r="1.8"/><circle cx="7.5" cy="17.5" r="1.8"/>',
+  check: '<path d="M20 6.5 9.5 17 4 11.5"/>',
+  alert: '<path d="M12 9v4.5M12 17.5v.01"/><path d="M10.3 4.4 2.6 17.6A2 2 0 0 0 4.3 20.6h15.4a2 2 0 0 0 1.7-3L13.7 4.4a2 2 0 0 0-3.4 0Z"/>',
+  parcels: '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+  archive: '<rect x="3" y="4" width="18" height="4.5" rx="1"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5"/><path d="M10 12.5h4"/>',
+  add: '<path d="M12 5v14M5 12h14"/>',
+  settings: '<path d="M4 21v-6M4 11V3M12 21v-9M12 8V3M20 21v-4M20 13V3"/><path d="M1.5 15h5M9.5 8h5M17.5 17h5"/>',
+};
+const icon = (name, size = 22, stroke = 1.7) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ""}</svg>`;
 
-function pickLanguage(configured) {
-  if (configured && STRINGS[configured]) return STRINGS[configured];
-  const browser = (navigator.language || "de").slice(0, 2).toLowerCase();
-  return STRINGS[browser] || STRINGS.de;
-}
+const PROGRESS = { ordered: .25, shipped: .5, out_for_delivery: .8, delivered: 1, exception: .5, unknown: .12 };
+const GLYPH = { ordered: "box", shipped: "truck", out_for_delivery: "truck", delivered: "check", exception: "alert", unknown: "box" };
+const URGENT = new Set(["IMMINENT", "APPROACHING"]);
+
+let L = T.de;
+let page = "parcels";
+let carriersLoaded = false;
+let editing = null;
+let latest = null;
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
+const el = (h) => { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstChild; };
+const $ = (id) => document.getElementById(id);
 
 const fmtDate = (iso) => {
   if (!iso) return null;
-  const d = new Date(iso + "T00:00:00");
+  const d = new Date(iso.length > 10 ? iso : iso + "T00:00:00");
   if (Number.isNaN(d.getTime())) return iso;
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const days = Math.round((d - today) / 86400000);
+  const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - today) / 86400000);
   if (days === 0) return L.today0;
   if (days === 1) return L.tomorrow;
   return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
@@ -188,144 +302,223 @@ const fmtAgo = (iso) => {
   return h < 24 ? L.hoursAgo(h) : L.daysAgo(Math.round(h / 24));
 };
 
-function applyStaticLabels(carriers) {
-  document.getElementById("poll").textContent = L.poll;
-  document.getElementById("browserLink").textContent = L.browser;
-  document.getElementById("addSummary").textContent = L.addTitle;
-  document.querySelector('label[for="code"]').textContent = L.code;
-  document.querySelector('label[for="carrier"]').textContent = L.carrier;
-  document.querySelector('label[for="title"]').textContent = L.title;
-  document.querySelector('label[for="recipient"]').textContent = L.recipient;
-  document.getElementById("addBtn").textContent = L.add;
-  if (!carriersLoaded && carriers && carriers.length) {
-    document.getElementById("carrier").innerHTML = carriers
-      .map((c) => `<option value="${esc(c.key)}">${esc(c.name)}${c.automatic ? " ✓" : ""}</option>`)
-      .join("");
-    carriersLoaded = true;
-  }
+function ring(shipment) {
+  const pct = PROGRESS[shipment.status] ?? .12;
+  const colour = shipment.status === "delivered" ? "var(--ok)"
+    : shipment.status === "exception" ? "var(--bad)"
+    : URGENT.has(shipment.state) ? "var(--warn)" : "var(--accent)";
+  const r = 20, c = 2 * Math.PI * r;
+  return `<div class="ring">
+    <svg width="48" height="48" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="${r}" fill="none" stroke="var(--line)" stroke-width="4"/>
+      <circle cx="24" cy="24" r="${r}" fill="none" stroke="${colour}" stroke-width="4"
+        stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - pct)}"/>
+    </svg>
+    <span class="glyph" style="color:${colour}">${icon(GLYPH[shipment.status] || "box", 20)}</span>
+  </div>`;
 }
 
-function renderAlerts(status) {
-  const box = document.getElementById("alerts");
-  box.innerHTML = "";
-  if (status.login_erforderlich) {
-    box.append(el(`<div class="alert bad"><strong>${esc(L.loginTitle)}</strong><span>${esc(L.loginBody)}</span>
-      <span class="spacer"></span><a class="btn" href="browser/" target="_blank" rel="noopener">${esc(L.browser)}</a></div>`));
-  }
-  if (status.gedrosselt) {
-    box.append(el(`<div class="alert warn"><strong>${esc(L.throttledTitle)}</strong><span>${esc(L.throttledBody)}</span></div>`));
-  }
-  if (status.selektoren_defekt) {
-    box.append(el(`<div class="alert warn"><strong>${esc(L.selectorsTitle)}</strong><span>${esc(L.selectorsBody)}</span></div>`));
-  }
-}
-
-function renderStats(data) {
-  const s = data.status || {};
-  const cards = [
-    [L.active, data.counts.active], [L.today, s.pakete_heute ?? "–"],
-    [L.stops, s.naechste_stopps ?? "–"], [L.lastPoll, fmtAgo(s.letzter_abruf)],
-  ];
-  document.getElementById("stats").innerHTML = cards
-    .map(([k, v]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`).join("");
-}
-
-function renderShipments(data) {
-  const box = document.getElementById("ships");
-  const list = data.shipments.filter((s) => s.state !== "DELIVERED");
-  if (!list.length) { box.innerHTML = `<div class="empty">${esc(L.empty)}</div>`; return; }
-  box.innerHTML = "";
-  for (const s of list) {
-    const cls = URGENT.has(s.state) ? "now" : s.state === "WINDOW" ? "soon" : "";
-    const bits = [];
+function shipCard(s, { editable = false, delivered = false } = {}) {
+  const colour = s.status === "delivered" ? "var(--ok)"
+    : s.status === "exception" ? "var(--bad)"
+    : URGENT.has(s.state) ? "var(--warn)" : "var(--accent)";
+  const bits = [];
+  if (delivered && s.delivered_at) bits.push(`<span>${esc(L.deliveredOn(fmtDate(s.delivered_at)))}</span>`);
+  else {
     const when = fmtDate(s.expected_date);
     if (when) bits.push(`<span>${esc(when)}</span>`);
     if (s.window_start) bits.push(`<span>${esc(s.window_start.slice(0, 5))}–${esc((s.window_end || "").slice(0, 5))}</span>`);
     if (s.stops_remaining !== null && s.stops_remaining !== undefined) bits.push(`<span>${esc(L.stopsLeft(s.stops_remaining))}</span>`);
-    if (s.carrier) bits.push(`<span>${esc(s.carrier)}</span>`);
-    if (s.recipient) bits.push(`<span class="badge">${esc(s.recipient)}</span>`);
-    if (s.source === "manual") bits.push(`<span class="badge">${esc(L.manual)}</span>`);
-    if (s.tracking_url) {
-      const label = s.source === "manual" ? L.track : L.openAmazon;
-      bits.push(`<a href="${esc(s.tracking_url)}" target="_blank" rel="noopener">${esc(label)}</a>`);
-    }
-    if (s.source === "manual") bits.push(`<button class="link" data-remove="${esc(s.shipment_id)}">${esc(L.remove)}</button>`);
+  }
+  if (s.carrier) bits.push(`<span>${esc(s.carrier)}</span>`);
+  if (s.recipient) bits.push(`<span class="badge">${esc(s.recipient)}</span>`);
+  if (s.source === "manual") bits.push(`<span class="badge">${esc(L.manual)}</span>`);
+  if (s.tracking_url) bits.push(`<a href="${esc(s.tracking_url)}" target="_blank" rel="noopener">${esc(s.source === "manual" ? L.track : L.openAmazon)}</a>`);
+  if (editable && s.source === "manual") {
+    bits.push(`<button class="link" data-edit="${esc(s.shipment_id)}">${esc(L.edit)}</button>`);
+    bits.push(`<button class="link" data-remove="${esc(s.shipment_id)}">${esc(L.remove)}</button>`);
+  }
 
-    box.append(el(`<div class="ship">
-      <div class="top"><span class="title">${esc(s.title || s.shipment_id)}</span>
-        <span class="badge ${cls}">${esc(L.states[s.state] || s.state)}</span></div>
-      <div class="meta"><span>${esc(L.statuses[s.status] || s.status)}</span>${bits.join("")}</div></div>`));
+  if (editing === s.shipment_id) {
+    return el(`<div class="ship">${ring(s)}<div class="body">
+      <div class="grid">
+        <div class="field"><label>${esc(L.title)}</label><input id="editTitle" value="${esc(s.title)}"></div>
+        <div class="field"><label>${esc(L.recipient)}</label><input id="editRecipient" value="${esc(s.recipient)}"></div>
+        <div class="field"><label>&nbsp;</label><button class="primary" data-save="${esc(s.shipment_id)}">${esc(L.save)}</button></div>
+        <div class="field"><label>&nbsp;</label><button data-cancel="1">${esc(L.cancel)}</button></div>
+      </div></div></div>`);
+  }
+
+  return el(`<div class="ship">${ring(s)}<div class="body">
+    <div class="title">${esc(s.title || s.shipment_id)}</div>
+    <div class="state" style="color:${colour}">${esc(L.states[s.state] || s.state)} · ${esc(L.statuses[s.status] || s.status)}</div>
+    <div class="meta">${bits.join("")}</div></div></div>`);
+}
+
+function renderNav(counts) {
+  const items = [
+    ["parcels", counts.active], ["archive", 0], ["add", 0], ["settings", 0],
+  ];
+  $("nav").innerHTML = items.map(([key, n]) =>
+    `<a href="#" data-nav="${key}" class="${page === key ? "on" : ""}">${icon(key, 21)}
+      <span>${esc(L.nav[key])}</span>${n ? `<span class="pill">${n}</span>` : ""}</a>`).join("");
+}
+
+function renderParcels(data) {
+  const current = data.shipments.filter((s) => s.bucket === "current");
+  const today = data.status?.pakete_heute ?? 0;
+  $("heroBig").textContent = current.length === 0 ? L.heroNone
+    : current.length === 1 ? L.heroOne : L.heroMany(current.length);
+  $("heroSub").textContent = current.length === 0 ? L.heroSubNone : L.heroSubToday(today);
+
+  const st = data.status || {};
+  $("stats").innerHTML = [
+    [L.active, current.length], [L.today, st.pakete_heute ?? "–"],
+    [L.stops, st.naechste_stopps ?? "–"], [L.lastPoll, fmtAgo(st.letzter_abruf)],
+  ].map(([k, v]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`).join("");
+
+  const box = $("ships"); box.innerHTML = "";
+  if (!current.length) box.innerHTML = `<div class="empty">${esc(L.empty)}</div>`;
+  else current.forEach((s) => box.append(shipCard(s, { editable: true })));
+
+  const alerts = $("alerts"); alerts.innerHTML = "";
+  if (st.login_erforderlich) alerts.append(el(`<div class="alert bad"><strong>${esc(L.loginTitle)}</strong>
+    <span>${esc(L.loginBody)}</span><span style="flex:1"></span>
+    <a class="btn" href="browser/" target="_blank" rel="noopener">${esc(L.browser)}</a></div>`));
+  if (st.gedrosselt) alerts.append(el(`<div class="alert warn"><strong>${esc(L.throttledTitle)}</strong><span>${esc(L.throttledBody)}</span></div>`));
+  if (st.selektoren_defekt) alerts.append(el(`<div class="alert warn"><strong>${esc(L.selectorsTitle)}</strong><span>${esc(L.selectorsBody)}</span></div>`));
+}
+
+function renderArchive(data) {
+  for (const [bucket, node, emptyText] of [
+    ["delivered", $("delivered"), L.deliveredEmpty], ["archive", $("archive"), L.archiveEmpty],
+  ]) {
+    const list = data.shipments.filter((s) => s.bucket === bucket);
+    node.innerHTML = "";
+    if (!list.length) node.innerHTML = `<div class="empty">${esc(emptyText)}</div>`;
+    else list.forEach((s) => node.append(shipCard(s, { delivered: true })));
   }
 }
 
-function renderFooter(data) {
-  const b = data.budget;
-  const parts = [`${L.version} ${esc(data.version)}`, `${L.amazonCalls}: ${b.amazon_used} / ${b.amazon_cap}`];
-  if (data.features.dhl) parts.push(`${L.dhlCalls}: ${b.dhl_used} / 250`);
-  if (!data.features.llm) parts.push(L.llmOff);
-  document.getElementById("foot").innerHTML = parts.map((p) => `<span>${p}</span>`).join("");
+function renderSettings(data) {
+  const b = data.budget, f = data.features;
+  const rows = [
+    [L.version, data.version],
+    [L.lastPoll, fmtAgo(data.status?.letzter_abruf)],
+    [L.amazonCalls, `${b.amazon_used} / ${b.amazon_cap}`],
+    [L.dhl, f.dhl ? `${L.on} · ${b.dhl_used} / 250` : L.off],
+    [L.llm, f.llm ? L.on : L.off],
+  ];
+  $("diag").innerHTML = rows.map(([k, v]) =>
+    `<div class="row"><span class="k">${esc(k)}</span><span>${esc(v)}</span></div>`).join("");
+
+  const fields = Object.entries(data.selectors || {});
+  $("selectors").innerHTML = fields.length
+    ? fields.map(([name, h]) => `<div class="row"><span class="k">${esc(name)}</span>
+        <span>${h.rate === null ? "–" : Math.round(h.rate * 100) + " %"}</span></div>`).join("")
+    : `<div class="muted">${esc(L.noneYet)}</div>`;
+}
+
+function applyLabels(data) {
+  $("hParcels").textContent = L.parcels;
+  $("hDelivered").textContent = L.delivered;
+  $("hArchive").textContent = L.archive;
+  $("hAdd").textContent = L.add;
+  $("addHint").textContent = L.addHint;
+  $("hStatus").textContent = L.status;
+  $("hSelectors").textContent = L.selectors;
+  $("hActions").textContent = L.actions;
+  $("settingsHint").textContent = L.settingsHint;
+  $("poll").textContent = L.poll;
+  $("browserLink").textContent = L.browser;
+  $("addBtn").textContent = L.addBtn;
+  document.querySelector('label[for="code"]').textContent = L.code;
+  document.querySelector('label[for="carrier"]').textContent = L.carrier;
+  document.querySelector('label[for="title"]').textContent = L.title;
+  document.querySelector('label[for="recipient"]').textContent = L.recipient;
+  if (!carriersLoaded && data.carriers?.length) {
+    $("carrier").innerHTML = data.carriers
+      .map((c) => `<option value="${esc(c.key)}">${esc(c.name)}${c.automatic ? " ✓" : ""}</option>`).join("");
+    carriersLoaded = true;
+  }
+}
+
+function show(next) {
+  page = next;
+  document.querySelectorAll("[data-page]").forEach((s) => s.classList.toggle("on", s.dataset.page === page));
+  if (latest) renderNav(latest.counts);
+  window.scrollTo(0, 0);
+}
+
+function renderAll(data) {
+  latest = data;
+  L = data.language && T[data.language] ? T[data.language]
+    : T[(navigator.language || "de").slice(0, 2).toLowerCase()] || T.de;
+  document.documentElement.lang = L === T.en ? "en" : "de";
+  applyLabels(data);
+  renderNav(data.counts);
+  renderParcels(data);
+  renderArchive(data);
+  renderSettings(data);
 }
 
 async function refresh() {
   try {
     const res = await fetch("api/state", { cache: "no-store" });
     if (!res.ok) throw new Error(res.status);
-    const data = await res.json();
-    L = pickLanguage(data.language === "auto" ? null : data.language);
-    document.documentElement.lang = L === STRINGS.en ? "en" : "de";
-    document.getElementById("dot").classList.add("live");
-    applyStaticLabels(data.carriers);
-    renderAlerts(data.status || {});
-    renderStats(data);
-    renderShipments(data);
-    renderFooter(data);
-  } catch (err) {
-    document.getElementById("dot").classList.remove("live");
-  }
+    renderAll(await res.json());
+  } catch (err) { /* keep the last picture */ }
 }
 
-document.getElementById("poll").addEventListener("click", async (event) => {
-  const button = event.currentTarget;
-  button.disabled = true; button.textContent = L.polling;
-  try { await fetch("api/poll", { method: "POST" }); }
-  finally { setTimeout(() => { button.disabled = false; button.textContent = L.poll; refresh(); }, 4000); }
+document.addEventListener("click", async (event) => {
+  const nav = event.target.closest?.("[data-nav]");
+  if (nav) { event.preventDefault(); editing = null; show(nav.dataset.nav); return; }
+
+  const edit = event.target.dataset?.edit;
+  if (edit) { editing = edit; renderParcels(latest); return; }
+  if (event.target.dataset?.cancel) { editing = null; renderParcels(latest); return; }
+
+  const save = event.target.dataset?.save;
+  if (save) {
+    await fetch(`api/shipments/${encodeURIComponent(save)}`, {
+      method: "PATCH", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: $("editTitle").value, recipient: $("editRecipient").value }),
+    });
+    editing = null; refresh(); return;
+  }
+
+  const remove = event.target.dataset?.remove;
+  if (remove) {
+    if (!confirm(L.removeConfirm)) return;
+    await fetch(`api/shipments/${encodeURIComponent(remove)}`, { method: "DELETE" });
+    refresh();
+  }
 });
 
-document.getElementById("addBtn").addEventListener("click", async (event) => {
-  const button = event.currentTarget;
-  const msg = document.getElementById("addMsg");
-  const code = document.getElementById("code").value.trim();
-  const carrier = document.getElementById("carrier").value;
+$("poll").addEventListener("click", async (event) => {
+  const b = event.currentTarget;
+  b.disabled = true; b.textContent = L.polling;
+  try { await fetch("api/poll", { method: "POST" }); }
+  finally { setTimeout(() => { b.disabled = false; b.textContent = L.poll; refresh(); }, 4000); }
+});
+
+$("addBtn").addEventListener("click", async (event) => {
+  const b = event.currentTarget, msg = $("addMsg");
+  const code = $("code").value.trim();
   msg.textContent = "";
   if (!code) { msg.textContent = L.errCode; return; }
-  if (!carrier) { msg.textContent = L.errCarrier; return; }
-
-  button.disabled = true; button.textContent = L.adding;
+  b.disabled = true; b.textContent = L.adding;
   try {
     const res = await fetch("api/shipments", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        tracking_code: code, carrier,
-        title: document.getElementById("title").value.trim(),
-        recipient: document.getElementById("recipient").value.trim(),
-      }),
+      body: JSON.stringify({ tracking_code: code, carrier: $("carrier").value,
+        title: $("title").value.trim(), recipient: $("recipient").value.trim() }),
     });
     if (!res.ok) throw new Error(res.status);
-    for (const id of ["code", "title", "recipient"]) document.getElementById(id).value = "";
-    document.getElementById("addBox").open = false;
-    await refresh();
-  } catch (err) {
-    msg.textContent = L.errGeneric;
-  } finally {
-    button.disabled = false; button.textContent = L.add;
-  }
-});
-
-document.getElementById("ships").addEventListener("click", async (event) => {
-  const id = event.target?.dataset?.remove;
-  if (!id || !confirm(L.removeConfirm)) return;
-  await fetch(`api/shipments/${encodeURIComponent(id)}`, { method: "DELETE" });
-  refresh();
+    ["code", "title", "recipient"].forEach((id) => { $(id).value = ""; });
+    await refresh(); show("parcels");
+  } catch (err) { msg.textContent = L.errGeneric; }
+  finally { b.disabled = false; b.textContent = L.addBtn; }
 });
 
 refresh();

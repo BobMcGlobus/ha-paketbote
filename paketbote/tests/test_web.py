@@ -200,8 +200,8 @@ class TestIndex(WebTestCase):
 
     def test_offers_both_languages(self):
         body = self.client.get("/").get_data(as_text=True)
-        self.assertIn("Sendung manuell hinzufügen", body)
-        self.assertIn("Add a shipment manually", body)
+        self.assertIn("Sendung hinzufügen", body)
+        self.assertIn("Add a shipment", body)
 
     def test_page_uses_relative_urls_so_ingress_works(self):
         # An absolute /api/state would leave the ingress path prefix behind.
@@ -209,6 +209,7 @@ class TestIndex(WebTestCase):
         self.assertIn('fetch("api/state"', body)
         self.assertNotIn('fetch("/api/state"', body)
         self.assertIn('href="browser/"', body)
+        self.assertIn('fetch("api/shipments"', body)
 
 
 if __name__ == "__main__":
