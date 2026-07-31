@@ -253,6 +253,24 @@ class TestSettings(WebTestCase):
         stored = json.loads(self.settings_module.SETTINGS_PATH.read_text())
         self.assertEqual(stored["dhl_api_key"], "geheim")
 
+    def test_reset_keeps_keys_and_filters(self):
+        self.client.post("/api/settings", json={
+            "dhl_api_key": "geheim", "poll_idle_minutes": 25,
+            "hidden_recipients": ["eltern"],
+        })
+        self.client.post("/api/settings/reset")
+        stored = json.loads(self.settings_module.SETTINGS_PATH.read_text())
+        self.assertEqual(stored["dhl_api_key"], "geheim")
+        self.assertEqual(stored["hidden_recipients"], ["eltern"])
+        self.assertNotIn("poll_idle_minutes", stored)
+
+    def test_dhl_test_without_a_key(self):
+        response = self.client.post("/api/test/dhl")
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertFalse(data["ok"])
+        self.assertEqual(data["reason"], "no_key")
+
     def test_hidden_recipients_round_trip(self):
         self.client.post("/api/settings", json={"hidden_recipients": ["eltern althoff"]})
         self.assertEqual(

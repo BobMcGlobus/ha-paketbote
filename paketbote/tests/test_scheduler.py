@@ -19,6 +19,7 @@ from app.models import (
     Shipment,
 )
 from app.scheduler import (
+    affordable_interval,
     apply_jitter,
     compute_state,
     in_quiet_hours,
@@ -263,13 +264,42 @@ class TestDayBudget(unittest.TestCase):
 
         return ticks, seen
 
-    def test_a_normal_delivery_day_lands_near_the_planned_budget(self):
+    def test_a_normal_delivery_day_is_cheap(self):
         ticks, seen = self._simulate(with_stops=True, ever_delivered=True)
         self.assertIn(STATE_APPROACHING, seen)
+        # With the default rhythm a whole day costs a couple of dozen requests,
+        # not the ~67 the plan first budgeted.
+        self.assertLess(ticks * 2, 60, f"more requests than expected: {ticks} polls")
+
+    def test_a_tighter_rhythm_still_reaches_the_last_rung(self):
+        # IMMINENT is skipped at the default pace, because the van goes from
+        # two stops to delivered between polls. Someone who wants that rung
+        # can buy it with a shorter interval.
+        config = Config(jitter_percent=0, poll_window_minutes=5,
+                        poll_approaching_minutes=2, poll_imminent_minutes=1)
+        now = datetime(2026, 7, 31, 14, 0)
+        seen = set()
+        while now < datetime(2026, 7, 31, 16, 0):
+            minutes_out = (now - datetime(2026, 7, 31, 14, 0)).total_seconds() / 60
+            stops = max(0, 20 - int(minutes_out / 4))
+            seen.add(compute_state(
+                status=STATUS_OUT_FOR_DELIVERY, expected_date=TODAY,
+                window_start=time(14, 0), window_end=time(16, 0),
+                stops_remaining=stops, now=now, config=config))
+            now += timedelta(minutes=next_interval_minutes([list(seen)[-1]], now, config))
         self.assertIn(STATE_IMMINENT, seen)
-        # The plan budgets roughly 67 polls for such a day.
-        self.assertGreater(ticks, 40, f"suspiciously few polls: {ticks}")
-        self.assertLess(ticks, 100, f"well past the planned budget: {ticks}")
+
+    def test_the_reserve_slows_things_down_before_the_day_runs_out(self):
+        config = Config(jitter_percent=0)
+        now = datetime(2026, 7, 31, 15, 0)
+        # Plenty left: the fast interval survives.
+        self.assertEqual(affordable_interval(3, now, config, used=10, requests_per_poll=3), 3)
+        # Almost spent: fall back so the evening still gets polled.
+        self.assertEqual(
+            affordable_interval(3, now, config, used=config.daily_request_cap - 2,
+                                requests_per_poll=3),
+            float(config.poll_idle_minutes),
+        )
 
     def test_a_package_that_never_reports_delivered_stays_within_the_cap(self):
         # The pathological case: stops stick at zero and Amazon never confirms.
@@ -281,11 +311,10 @@ class TestDayBudget(unittest.TestCase):
             f"a stuck package would blow the daily cap: {ticks} polls",
         )
 
-    def test_without_stop_counts_the_day_is_cheaper(self):
-        with_stops, _ = self._simulate(with_stops=True, ever_delivered=True)
-        without, seen = self._simulate(with_stops=False, ever_delivered=True)
+    def test_without_stop_counts_the_ladder_tops_out_at_window(self):
+        _, seen = self._simulate(with_stops=False, ever_delivered=True)
         self.assertNotIn(STATE_IMMINENT, seen)
-        self.assertLess(without, with_stops)
+        self.assertNotIn(STATE_APPROACHING, seen)
 
     def test_quiet_hours_are_actually_used(self):
         config = Config(jitter_percent=0)

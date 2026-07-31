@@ -36,11 +36,11 @@ class Config:
     llm_provider: str = "gemini"
     llm_model: str = "gemini-2.5-flash"
     llm_api_key: str = ""
-    poll_idle_minutes: int = 60
-    poll_pending_minutes: int = 15
-    poll_window_minutes: int = 10
-    poll_approaching_minutes: int = 3
-    poll_imminent_minutes: int = 1
+    poll_idle_minutes: int = 180
+    poll_pending_minutes: int = 60
+    poll_window_minutes: int = 20
+    poll_approaching_minutes: int = 10
+    poll_imminent_minutes: int = 3
     approaching_stops_threshold: int = 7
     imminent_stops_threshold: int = 2
     daily_request_cap: int = 300

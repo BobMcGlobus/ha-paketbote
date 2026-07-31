@@ -167,6 +167,41 @@ def next_interval_minutes(
     return apply_jitter(base, config.jitter_percent, rng)
 
 
+def budget_reserve(now: datetime, config: Config, requests_per_poll: int) -> int:
+    """How many requests to hold back for the rest of the day.
+
+    Enough to keep polling at the idle rhythm until quiet hours begin. Without
+    this, one busy delivery afternoon spends the whole allowance and the
+    add-on goes silent while parcels are still moving.
+    """
+    end_hour = config.quiet_hours_start if config.quiet_hours_start != config.quiet_hours_end else 24
+    hours_left = max(0.0, end_hour - (now.hour + now.minute / 60))
+    polls_left = hours_left * 60 / max(1, config.poll_idle_minutes)
+    return int(polls_left * max(1, requests_per_poll))
+
+
+def affordable_interval(
+    minutes: float,
+    now: datetime,
+    config: Config,
+    used: int,
+    requests_per_poll: int,
+) -> float:
+    """Slow down to the idle rhythm once the day's remaining budget is needed.
+
+    Returns the interval unchanged while there is surplus.
+    """
+    remaining = config.daily_request_cap - used
+    reserve = budget_reserve(now, config, requests_per_poll)
+    if remaining <= reserve:
+        LOGGER.info(
+            "Holding the idle rhythm: %d requests left, %d reserved for the rest of the day",
+            remaining, reserve,
+        )
+        return float(config.poll_idle_minutes)
+    return minutes
+
+
 def summarise(shipments: list[Shipment], now: datetime, config: Config) -> dict:
     """The aggregate figures, computed here rather than templated in HA.
 

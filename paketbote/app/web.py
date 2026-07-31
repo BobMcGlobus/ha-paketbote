@@ -17,6 +17,8 @@ from flask import Flask, jsonify, request, send_from_directory
 from . import __version__
 from . import settings as settings_module
 from .carriers import registry
+from .carriers.base import CarrierError, NotFound
+from .carriers.dhl import DhlTracker
 from .config import Config
 from .people import normalise_name
 from .models import (
@@ -175,6 +177,43 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
             "groups": list(settings_module.GROUPS),
             "values": values,
         })
+
+    @app.post("/api/test/dhl")
+    def test_dhl():
+        """Ask DHL about a number that cannot exist.
+
+        A 404 proves the key was accepted; only the key itself is under test,
+        so an unknown shipment is exactly the right answer.
+        """
+        config = Config.load()
+        if not config.dhl_api_key:
+            return jsonify({"ok": False, "reason": "no_key"})
+
+        store = Store(db_path)
+        try:
+            tracker = DhlTracker(config.dhl_api_key, store)
+            tracker.fetch("00000000000000000000")
+        except NotFound:
+            return jsonify({"ok": True, "reason": "accepted"})
+        except CarrierError as err:
+            return jsonify({"ok": False, "reason": str(err)})
+        finally:
+            store.close()
+        return jsonify({"ok": True, "reason": "accepted"})
+
+    @app.post("/api/settings/reset")
+    def reset_settings():
+        """Back to the defaults, keeping the keys and the recipient filter."""
+        current = settings_module.load()
+        keep = {
+            key: value for key, value in current.items()
+            if key == settings_module.HIDDEN_RECIPIENTS
+            or (settings_module.BY_KEY.get(key) and settings_module.BY_KEY[key].kind == "password")
+        }
+        settings_module.SETTINGS_PATH.write_text(
+            json.dumps(keep, ensure_ascii=False, indent=2), encoding="utf-8")
+        LOGGER.info("Settings reset to defaults")
+        return jsonify({"ok": True})
 
     @app.post("/api/settings")
     def write_settings():

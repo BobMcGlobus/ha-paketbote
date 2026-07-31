@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.13.0
+
+- **Deutlich ruhigerer Standardrhythmus:** untätig alle 3 h statt 1 h, heute
+  erwartet 60 min, Zustellfenster 20 min, kommt näher 10 min, gleich da 3 min.
+  Ein normaler Liefertag kostet damit rund 28 statt 98 Abrufe
+- **Budget-Reserve:** es wird nur so schnell abgerufen, wie genug übrig bleibt,
+  um bis zur Nachtruhe im 3-Stunden-Takt weiterzumachen. Damit hört das Add-on
+  nicht mitten am Nachmittag auf, während Pakete unterwegs sind
+- **Bei erreichtem Tageslimit wird alle 10 Minuten nachgesehen**, ob das Limit
+  angehoben wurde — vorher wartete es das volle Ruheintervall ab, weshalb eine
+  Anhebung scheinbar wirkungslos blieb
+- **Testknopf für den DHL-Schlüssel** in den Einstellungen: fragt DHL nach
+  einer unmöglichen Sendungsnummer, ein „nicht gefunden" beweist, dass der
+  Schlüssel akzeptiert wird
+- **Auf Standard zurücksetzen** in den Einstellungen; Schlüssel und
+  Empfängerfilter bleiben erhalten
+- Der Status zeigt jetzt, welche Werte beim letzten Abruf **tatsächlich
+  wirksam** waren — damit ist nachprüfbar, ob Änderungen angekommen sind
+
 ## 0.12.0
 
 - **Die Stopp-Zahl wird gelesen — die Eskalationsstufen funktionieren.** Sie

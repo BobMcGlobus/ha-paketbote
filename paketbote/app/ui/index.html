@@ -185,6 +185,8 @@
     <div id="options"></div>
     <div class="panel">
       <button class="primary" id="saveSettings"></button>
+      <button id="testDhl"></button>
+      <button id="resetSettings"></button>
       <span class="muted" id="saveMsg"></span>
     </div>
 
@@ -223,6 +225,11 @@ const T = {
     errCode: "Bitte eine Sendungsnummer eingeben.", errGeneric: "Konnte nicht gespeichert werden.",
     status: "Status", selectors: "Selektoren", actions: "Aktionen",
     options: "Einstellungen", save: "Speichern", saving: "Wird gespeichert…", saved: "Gespeichert.",
+    testDhl: "DHL-Schlüssel prüfen", testing: "Wird geprüft…",
+    dhlOk: "DHL akzeptiert den Schlüssel.", dhlNoKey: "Kein DHL-Schlüssel hinterlegt.",
+    dhlFail: "DHL lehnt ab: ", reset: "Auf Standard zurücksetzen",
+    resetConfirm: "Alle Einstellungen auf Standard zurücksetzen? Schlüssel und Filter bleiben.",
+    inEffect: "Beim Abruf wirksam",
     needsRestart: "wirkt nach Neustart",
     groups: { amazon: "Amazon-Quelle", polling: "Amazon: Abrufrhythmus", carriers: "Zusteller: DHL",
               extraction: "Auslesen", interface: "Darstellung", advanced: "Erweitert" },
@@ -275,6 +282,11 @@ const T = {
     errCode: "Please enter a tracking number.", errGeneric: "Could not be saved.",
     status: "Status", selectors: "Selectors", actions: "Actions",
     options: "Settings", save: "Save", saving: "Saving…", saved: "Saved.",
+    testDhl: "Test DHL key", testing: "Testing…",
+    dhlOk: "DHL accepted the key.", dhlNoKey: "No DHL key configured.",
+    dhlFail: "DHL refused: ", reset: "Reset to defaults",
+    resetConfirm: "Reset all settings to their defaults? Keys and filters are kept.",
+    inEffect: "In effect at the last poll",
     needsRestart: "takes effect after a restart",
     groups: { amazon: "Amazon source", polling: "Amazon: polling", carriers: "Carrier: DHL",
               extraction: "Extraction", interface: "Appearance", advanced: "Advanced" },
@@ -485,6 +497,11 @@ function renderSettings(data) {
     [L.dhl, f.dhl ? `${L.on} · ${b.dhl_used} / 250` : L.off],
     [L.llm, f.llm ? L.on : L.off],
   ];
+  const eff = data.status?.effective;
+  if (eff) {
+    rows.push([L.inEffect,
+      `${L.dhl}: ${eff.dhl ? L.on : L.off} · ${L.amazonCalls.split(" ")[0]} ${eff.daily_request_cap} · ${eff.poll_idle_minutes} min`]);
+  }
   $("diag").innerHTML = rows.map(([k, v]) =>
     `<div class="row"><span class="k">${esc(k)}</span><span>${esc(v)}</span></div>`).join("");
 
@@ -544,6 +561,8 @@ function applyLabels(data) {
   $("addHint").textContent = L.addHint;
   $("hOptions").textContent = L.options;
   $("saveSettings").textContent = L.save;
+  $("testDhl").textContent = L.testDhl;
+  $("resetSettings").textContent = L.reset;
   $("hStatus").textContent = L.status;
   $("hSelectors").textContent = L.selectors;
   $("hActions").textContent = L.actions;
@@ -644,6 +663,24 @@ $("saveSettings").addEventListener("click", async (event) => {
     await loadOptions(); refresh();
   } catch (err) { msg.textContent = L.errGeneric; }
   finally { b.disabled = false; b.textContent = L.save; }
+});
+
+$("testDhl").addEventListener("click", async (event) => {
+  const b = event.currentTarget, msg = $("saveMsg");
+  b.disabled = true; b.textContent = L.testing; msg.textContent = "";
+  try {
+    const res = await fetch("api/test/dhl", { method: "POST" });
+    const data = await res.json();
+    msg.textContent = data.ok ? L.dhlOk
+      : data.reason === "no_key" ? L.dhlNoKey : L.dhlFail + data.reason;
+  } catch (err) { msg.textContent = L.errGeneric; }
+  finally { b.disabled = false; b.textContent = L.testDhl; }
+});
+
+$("resetSettings").addEventListener("click", async () => {
+  if (!confirm(L.resetConfirm)) return;
+  await fetch("api/settings/reset", { method: "POST" });
+  await loadOptions(); refresh();
 });
 
 $("poll").addEventListener("click", async (event) => {

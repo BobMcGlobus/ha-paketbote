@@ -32,7 +32,7 @@ from .models import (
 )
 from .mqtt import Publisher
 from .people import normalise_name
-from .scheduler import next_interval_minutes, state_for, summarise
+from .scheduler import affordable_interval, next_interval_minutes, state_for, summarise
 from .scraper import Scraper
 from .state import Store
 from .supervisor import SupervisorUnavailable, mqtt_credentials
@@ -58,6 +58,9 @@ MAX_POSTCODE_ATTEMPTS = 3
 # A shipment absent from one poll means nothing: a freshly placed order shows
 # up late, and a page that did not finish rendering looks exactly the same.
 MISSING_POLLS_BEFORE_DELIVERED = 3
+
+# While throttled, look again this often in case the cap was raised.
+THROTTLED_RECHECK_MINUTES = 10
 
 DUMP_DIR = Path("/config/dumps")
 
@@ -130,7 +133,9 @@ class Paketbote:
                 )
             self._throttled = True
             self._publish(now)
-            return float(config.poll_idle_minutes)
+            # Check back sooner than the idle rhythm: the cap can be raised in
+            # the interface, and waiting three hours to notice is no help.
+            return float(THROTTLED_RECHECK_MINUTES)
         self._throttled = False
 
         try:
@@ -162,7 +167,12 @@ class Paketbote:
         shipments = self._store.all_shipments()
         states = [s.state for s in shipments if s.state != STATE_DELIVERED]
         self._publish(now)
-        return next_interval_minutes(states, now, self._config)
+
+        minutes = next_interval_minutes(states, now, self._config)
+        # One overview plus one tracker page per active shipment.
+        return affordable_interval(
+            minutes, now, self._config, self._store.requests_today(), 1 + len(states)
+        )
 
     # -- one pass over Amazon ---------------------------------------------
 
@@ -474,7 +484,16 @@ class Paketbote:
             }
         )
 
-        self._publisher.publish_summary(summary)
+        summary["effective"] = {
+            "daily_request_cap": self._config.daily_request_cap,
+            "poll_idle_minutes": self._config.poll_idle_minutes,
+            "dhl": bool(self._config.dhl_api_key),
+            "dhl_poll_minutes": self._config.dhl_poll_minutes,
+            "read_at": now.astimezone().isoformat(),
+        }
+        self._publisher.publish_summary(
+            {k: v for k, v in summary.items() if k != "effective"}
+        )
         self._publisher.publish_shipments(
             {
                 "count": len([s for s in shipments if s.state != STATE_DELIVERED]),
