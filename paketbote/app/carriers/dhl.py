@@ -133,11 +133,16 @@ class DhlTracker:
 
     name = NAME
 
+    # DHL accepts the key either as a header or as a query parameter. Which
+    # one works is remembered, so a working setup costs one request.
+    AUTH_MODES = ("header", "query")
+
     def __init__(self, api_key: str, store=None) -> None:
         # A key pasted from a portal often carries whitespace.
         self._api_key = (api_key or "").strip()
         self._store = store
         self._last_call = 0.0
+        self._auth_mode = self.AUTH_MODES[0]
 
     @property
     def available(self) -> bool:
@@ -155,6 +160,31 @@ class DhlTracker:
             LOGGER.debug("Holding %.1fs to stay inside DHL's rate limit", pause)
             time_module.sleep(pause)
 
+    def _request(self, params: dict):
+        """One call, trying the other way of passing the key if refused."""
+        order = [self._auth_mode] + [m for m in self.AUTH_MODES if m != self._auth_mode]
+        response = None
+        for mode in order:
+            query = dict(params)
+            headers = {}
+            if mode == "header":
+                headers["DHL-API-Key"] = self._api_key
+            else:
+                query["apikey"] = self._api_key
+
+            response = requests.get(API_URL, params=query, headers=headers,
+                                    timeout=REQUEST_TIMEOUT)
+            if self._store is not None:
+                self._store.count_carrier_request("dhl")
+
+            if response.status_code not in (401, 403):
+                if mode != self._auth_mode:
+                    LOGGER.info("DHL accepts the key as a %s; using that from now on", mode)
+                    self._auth_mode = mode
+                return response
+
+        return response
+
     def probe(self) -> tuple[bool, str]:
         """Check whether DHL accepts the key, without interpreting a shipment.
 
@@ -166,17 +196,9 @@ class DhlTracker:
             return False, "no key configured"
 
         try:
-            response = requests.get(
-                API_URL,
-                params={"trackingNumber": "00340434000000000000"},
-                headers={"DHL-API-Key": self._api_key},
-                timeout=REQUEST_TIMEOUT,
-            )
+            response = self._request({"trackingNumber": "00340434000000000000"})
         except requests.RequestException as err:
             return False, f"could not reach DHL: {err}"
-        finally:
-            if self._store is not None:
-                self._store.count_carrier_request("dhl")
 
         if response.status_code in (401, 403):
             # DHL says why in the body; throwing that away is what made the
@@ -203,18 +225,11 @@ class DhlTracker:
             params["recipientPostalCode"] = postal_code
 
         try:
-            response = requests.get(
-                API_URL,
-                params=params,
-                headers={"DHL-API-Key": self._api_key},
-                timeout=REQUEST_TIMEOUT,
-            )
+            response = self._request(params)
         except requests.RequestException as err:
             raise CarrierError(f"DHL request failed: {err}") from err
         finally:
             self._last_call = time_module.monotonic()
-            if self._store is not None:
-                self._store.count_carrier_request("dhl")
 
         if response.status_code == 404:
             raise NotFound(f"DHL does not know {tracking_code}")

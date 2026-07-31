@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.1
+
+- **DHL akzeptiert den Schlüssel auch als Query-Parameter**, nicht nur als
+  Header. Wird der Header abgelehnt, wird der zweite Weg versucht und der
+  erfolgreiche gemerkt — ein funktionierender Aufbau kostet weiterhin genau
+  eine Anfrage
+
 ## 0.14.0
 
 - **Alle Artikel einer Sendung untereinander**, mit Produktbild aus Amazons

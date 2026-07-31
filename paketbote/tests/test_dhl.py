@@ -151,6 +151,50 @@ class TestProbe(unittest.TestCase):
         self.assertTrue(DhlTracker("  abc\n").available)
 
 
+class TestAuthFallback(unittest.TestCase):
+    """DHL takes the key as a header or as a query parameter."""
+
+    def _tracker(self, header_status, query_status):
+        from unittest.mock import Mock, patch
+        calls = []
+
+        def fake(url, params=None, headers=None, timeout=None):
+            mode = "header" if headers and "DHL-API-Key" in headers else "query"
+            calls.append(mode)
+            return Mock(status_code=header_status if mode == "header" else query_status,
+                        json=Mock(return_value={}))
+
+        return DhlTracker("key"), calls, patch("app.carriers.dhl.requests.get", side_effect=fake)
+
+    def test_the_query_parameter_is_tried_when_the_header_is_refused(self):
+        tracker, calls, patched = self._tracker(401, 404)
+        with patched:
+            ok, _ = tracker.probe()
+        self.assertTrue(ok)
+        self.assertEqual(calls, ["header", "query"])
+
+    def test_the_working_way_is_remembered(self):
+        tracker, calls, patched = self._tracker(401, 404)
+        with patched:
+            tracker.probe()
+            calls.clear()
+            tracker.probe()
+        self.assertEqual(calls, ["query"])
+
+    def test_a_working_header_costs_one_request(self):
+        tracker, calls, patched = self._tracker(404, 404)
+        with patched:
+            tracker.probe()
+        self.assertEqual(calls, ["header"])
+
+    def test_both_refused_is_still_a_failure(self):
+        tracker, _, patched = self._tracker(401, 401)
+        with patched:
+            ok, detail = tracker.probe()
+        self.assertFalse(ok)
+        self.assertIn("401", detail)
+
+
 class TestHandles(unittest.TestCase):
     def test_names_this_module_answers_for(self):
         self.assertTrue(handles("DHL"))
