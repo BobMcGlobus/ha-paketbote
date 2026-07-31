@@ -38,7 +38,9 @@ CREATE TABLE IF NOT EXISTS shipments (
     state           TEXT,
     first_seen      TEXT,
     last_seen       TEXT,
-    delivered_at    TEXT
+    delivered_at    TEXT,
+    missed          INTEGER NOT NULL DEFAULT 0,
+    carrier_checked_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS field_health (
@@ -115,9 +117,12 @@ class Store:
         database written by an older build needs the new columns added.
         """
         existing = {row["name"] for row in self._db.execute("PRAGMA table_info(shipments)")}
-        for column in ("recipient", "delivery_address", "tracking_code", "source", "delivered_at"):
+        for column, kind in (("recipient", "TEXT"), ("delivery_address", "TEXT"),
+                             ("tracking_code", "TEXT"), ("source", "TEXT"),
+                             ("delivered_at", "TEXT"), ("missed", "INTEGER DEFAULT 0"),
+                             ("carrier_checked_at", "TEXT")):
             if column not in existing:
-                self._db.execute(f"ALTER TABLE shipments ADD COLUMN {column} TEXT")
+                self._db.execute(f"ALTER TABLE shipments ADD COLUMN {column} {kind}")
                 LOGGER.info("Added column %s to the shipments table", column)
 
     def close(self) -> None:
@@ -131,8 +136,8 @@ class Store:
             INSERT INTO shipments (shipment_id, order_id, tracking_url, title, recipient,
                                    delivery_address, carrier, tracking_code, source,
                                    status, stops_remaining, window_start, window_end,
-                                   expected_date, state, delivered_at, first_seen, last_seen)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(
+                                   expected_date, state, delivered_at, missed, carrier_checked_at, first_seen, last_seen)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(
                 (SELECT first_seen FROM shipments WHERE shipment_id = ?), ?), ?)
             ON CONFLICT(shipment_id) DO UPDATE SET
                 order_id=excluded.order_id,
@@ -150,6 +155,8 @@ class Store:
                 expected_date=excluded.expected_date,
                 state=excluded.state,
                 delivered_at=excluded.delivered_at,
+                missed=excluded.missed,
+                carrier_checked_at=excluded.carrier_checked_at,
                 last_seen=excluded.last_seen
             """,
             (
@@ -169,6 +176,8 @@ class Store:
                 _iso(shipment.expected_date),
                 shipment.state,
                 _iso(shipment.delivered_at),
+                shipment.missed,
+                _iso(shipment.carrier_checked_at),
                 shipment.shipment_id,
                 _iso(shipment.last_seen or datetime.now()),
                 _iso(shipment.last_seen or datetime.now()),
@@ -202,6 +211,8 @@ class Store:
             state=row["state"] or STATE_IDLE,
             last_seen=_as_datetime(row["last_seen"]),
             delivered_at=_as_datetime(row["delivered_at"]),
+            missed=int(row["missed"] or 0),
+            carrier_checked_at=_as_datetime(row["carrier_checked_at"]),
         )
 
     # -- who lives where ---------------------------------------------------

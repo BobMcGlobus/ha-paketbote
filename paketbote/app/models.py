@@ -84,6 +84,10 @@ class Shipment:
     # Set when the parcel arrived. It stays visible for a few days after
     # that, then moves to the archive.
     delivered_at: datetime | None = None
+    # Consecutive polls in which the source did not list this shipment. One
+    # miss means nothing — a page that rendered late looks the same.
+    missed: int = 0
+    carrier_checked_at: datetime | None = None
 
 
 @dataclass

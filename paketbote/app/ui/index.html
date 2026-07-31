@@ -224,7 +224,7 @@ const T = {
     status: "Status", selectors: "Selektoren", actions: "Aktionen",
     options: "Einstellungen", save: "Speichern", saving: "Wird gespeichert…", saved: "Gespeichert.",
     needsRestart: "wirkt nach Neustart",
-    groups: { amazon: "Amazon", polling: "Abrufrhythmus", carriers: "Zusteller",
+    groups: { amazon: "Amazon-Quelle", polling: "Amazon: Abrufrhythmus", carriers: "Zusteller: DHL",
               extraction: "Auslesen", interface: "Darstellung", advanced: "Erweitert" },
     labels: {
       amazon_domain: "Amazon-Domain", language: "Sprache",
@@ -235,10 +235,11 @@ const T = {
       imminent_stops_threshold: "Schwelle: gleich da", quiet_hours_start: "Nachtruhe ab",
       quiet_hours_end: "Nachtruhe bis", daily_request_cap: "Tageslimit",
       jitter_percent: "Streuung", dhl_api_key: "DHL-API-Schlüssel",
+      dhl_poll_minutes: "Frühestens erneut fragen",
       llm_provider: "LLM-Anbieter", llm_model: "LLM-Modell", llm_api_key: "LLM-API-Schlüssel",
       developer_mode: "Entwicklermodus", dump_on_start: "Beim Start ausgeben", log_level: "Protokollstufe",
     },
-    filterHint: "Antippen, um Empfänger auszublenden",
+    filterHint: "Antippen, um Empfänger auszublenden", secretSet: "gespeichert — leer lassen, um zu behalten",
     settingsHint: "Die Add-on-Optionen setzen nur die Startwerte. Was hier steht, gilt.",
     poll: "Jetzt abrufen", polling: "Angefragt…", browser: "Browser öffnen",
     version: "Version", amazonCalls: "Amazon-Abrufe heute", dhlCalls: "DHL-Abrufe heute",
@@ -275,7 +276,7 @@ const T = {
     status: "Status", selectors: "Selectors", actions: "Actions",
     options: "Settings", save: "Save", saving: "Saving…", saved: "Saved.",
     needsRestart: "takes effect after a restart",
-    groups: { amazon: "Amazon", polling: "Polling", carriers: "Carriers",
+    groups: { amazon: "Amazon source", polling: "Amazon: polling", carriers: "Carrier: DHL",
               extraction: "Extraction", interface: "Appearance", advanced: "Advanced" },
     labels: {
       amazon_domain: "Amazon domain", language: "Language",
@@ -286,10 +287,11 @@ const T = {
       imminent_stops_threshold: "Threshold: almost there", quiet_hours_start: "Quiet hours from",
       quiet_hours_end: "Quiet hours until", daily_request_cap: "Daily cap",
       jitter_percent: "Jitter", dhl_api_key: "DHL API key",
+      dhl_poll_minutes: "Ask again no sooner than",
       llm_provider: "LLM provider", llm_model: "LLM model", llm_api_key: "LLM API key",
       developer_mode: "Developer mode", dump_on_start: "Dump on start", log_level: "Log level",
     },
-    filterHint: "Tap to hide a recipient",
+    filterHint: "Tap to hide a recipient", secretSet: "stored — leave empty to keep it",
     settingsHint: "The add-on options only seed the first run. What is set here wins.",
     poll: "Refresh now", polling: "Requested…", browser: "Open browser",
     version: "Version", amazonCalls: "Amazon calls today", dhlCalls: "DHL calls today",
@@ -515,8 +517,10 @@ function renderOptions(payload) {
         input = `<input type="number" data-key="${esc(f.key)}" value="${esc(value)}"
           min="${f.min ?? ""}" max="${f.max ?? ""}">`;
       } else {
+        const stored = f.kind === "password" && payload.secrets?.[f.key];
         input = `<input type="${f.kind === "password" ? "password" : "text"}"
-          data-key="${esc(f.key)}" value="${esc(value ?? "")}" autocomplete="off">`;
+          data-key="${esc(f.key)}" value="${esc(value ?? "")}" autocomplete="off"
+          placeholder="${stored ? esc(L.secretSet) : ""}">`;
       }
       const cls = f.kind === "bool" ? "field switch" : "field";
       return `<div class="${cls}"><label>${label}</label>${input}</div>`;

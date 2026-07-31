@@ -212,5 +212,53 @@ class TestIndex(WebTestCase):
         self.assertIn('fetch("api/shipments"', body)
 
 
+class TestSettings(WebTestCase):
+    def setUp(self):
+        super().setUp()
+        from app import settings as settings_module
+        self._real_settings = settings_module.SETTINGS_PATH
+        settings_module.SETTINGS_PATH = Path(self._tmp.name) / "settings.json"
+        self.settings_module = settings_module
+
+    def tearDown(self):
+        self.settings_module.SETTINGS_PATH = self._real_settings
+        super().tearDown()
+
+    def test_schema_is_grouped(self):
+        data = self.client.get("/api/settings").get_json()
+        groups = {f["group"] for f in data["schema"]}
+        self.assertIn("polling", groups)
+        self.assertIn("carriers", groups)
+        self.assertTrue(set(data["groups"]) >= groups)
+
+    def test_saving_changes_a_value(self):
+        self.client.post("/api/settings", json={"poll_idle_minutes": 25})
+        self.assertEqual(self.client.get("/api/settings").get_json()["values"]["poll_idle_minutes"], 25)
+
+    def test_values_are_clamped(self):
+        self.client.post("/api/settings", json={"jitter_percent": 5000})
+        self.assertEqual(self.client.get("/api/settings").get_json()["values"]["jitter_percent"], 50)
+
+    def test_secrets_are_never_sent_back(self):
+        self.client.post("/api/settings", json={"dhl_api_key": "geheim"})
+        data = self.client.get("/api/settings").get_json()
+        self.assertEqual(data["values"]["dhl_api_key"], "")
+        self.assertTrue(data["secrets"]["dhl_api_key"])
+
+    def test_an_empty_password_field_keeps_the_stored_key(self):
+        # The settings form posts every field; without this a save would wipe
+        # a key the user never touched.
+        self.client.post("/api/settings", json={"dhl_api_key": "geheim"})
+        self.client.post("/api/settings", json={"dhl_api_key": "", "poll_idle_minutes": 30})
+        stored = json.loads(self.settings_module.SETTINGS_PATH.read_text())
+        self.assertEqual(stored["dhl_api_key"], "geheim")
+
+    def test_hidden_recipients_round_trip(self):
+        self.client.post("/api/settings", json={"hidden_recipients": ["eltern althoff"]})
+        self.assertEqual(
+            self.client.get("/api/state").get_json()["hidden_recipients"], ["eltern althoff"]
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

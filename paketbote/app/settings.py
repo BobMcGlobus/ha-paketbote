@@ -68,6 +68,7 @@ FIELDS: tuple[Field, ...] = (
     Field("jitter_percent", "int", "polling", 0, 50, unit="%"),
 
     Field("dhl_api_key", "password", "carriers"),
+    Field("dhl_poll_minutes", "int", "carriers", 5, 720, unit="min"),
 
     Field("llm_provider", "select", "extraction", options=("gemini", "openai", "anthropic")),
     Field("llm_model", "text", "extraction"),
@@ -106,6 +107,12 @@ def save(values: dict) -> dict:
         if field_spec is None:
             LOGGER.debug("Ignoring unknown setting %s", key)
             continue
+        # An empty password field means "leave it alone". Without this the
+        # settings page silently wipes a key that was set elsewhere, and the
+        # carrier stops being asked with no visible reason.
+        if field_spec.kind == "password" and not str(value or "").strip():
+            continue
+
         try:
             current[key] = field_spec.coerce(value)
         except (TypeError, ValueError) as err:

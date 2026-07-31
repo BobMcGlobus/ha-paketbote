@@ -48,6 +48,7 @@ class Config:
     quiet_hours_start: int = 22
     quiet_hours_end: int = 6
     dhl_api_key: str = ""
+    dhl_poll_minutes: int = 30
     dump_on_start: bool = False
     developer_mode: bool = False
     language: str = "auto"

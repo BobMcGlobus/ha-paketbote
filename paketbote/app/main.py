@@ -55,6 +55,10 @@ ARCHIVE_DAYS = 90
 # Each extra guess costs a carrier request, so keep it to a household's worth.
 MAX_POSTCODE_ATTEMPTS = 3
 
+# A shipment absent from one poll means nothing: a freshly placed order shows
+# up late, and a page that did not finish rendering looks exactly the same.
+MISSING_POLLS_BEFORE_DELIVERED = 3
+
 DUMP_DIR = Path("/config/dumps")
 
 # The interface runs as its own process; these two files are how it and the
@@ -74,6 +78,7 @@ class Paketbote:
         self._throttled = False
         self._last_sources: list[str] = []
         self._last_poll: datetime | None = None
+        self._dhl_key = config.dhl_api_key
         self._dhl = DhlTracker(config.dhl_api_key, store)
         self._css_failures = 0
 
@@ -105,7 +110,16 @@ class Paketbote:
 
     def _tick(self) -> float:
         now = datetime.now()
+
+        # Re-read every cycle: the interface can change settings while this
+        # process runs, and telling the user they apply "next poll" has to be
+        # true.
+        self._config = Config.load()
         config = self._config
+        if config.dhl_api_key != self._dhl_key:
+            self._dhl_key = config.dhl_api_key
+            self._dhl = DhlTracker(config.dhl_api_key, self._store)
+            LOGGER.info("DHL lookups %s", "enabled" if config.dhl_api_key else "disabled")
 
         used = self._store.requests_today()
         if used >= config.daily_request_cap:
@@ -169,9 +183,33 @@ class Paketbote:
             # Orders drop off the list once they age out of Amazon's window.
             # Manually added parcels were never on it and must survive.
             from_amazon = {s.shipment_id for s in stored if s.source == SOURCE_AMAZON}
-            for shipment_id in from_amazon - seen:
+            # A list we could not read properly must not retire anything.
+            trustworthy = bool(overview.shipments) and overview.content_selector in (
+                ".order-card",
+                ".pt-card",
+            )
+            for shipment_id in from_amazon:
                 vanished = known[shipment_id]
-                LOGGER.info("%s is no longer listed; treating it as delivered", shipment_id)
+                if shipment_id in seen:
+                    if vanished.missed:
+                        vanished.missed = 0
+                        self._store.save(vanished)
+                    continue
+                if not trustworthy:
+                    LOGGER.debug("Order list looked unreliable; not retiring %s", shipment_id)
+                    continue
+
+                vanished.missed += 1
+                if vanished.missed < MISSING_POLLS_BEFORE_DELIVERED:
+                    LOGGER.info(
+                        "%s was not listed (%d/%d) — waiting before calling it delivered",
+                        shipment_id, vanished.missed, MISSING_POLLS_BEFORE_DELIVERED,
+                    )
+                    self._store.save(vanished)
+                    continue
+
+                LOGGER.info("%s has been absent %d times; treating it as delivered",
+                            shipment_id, vanished.missed)
                 self._mark_delivered(vanished, now)
 
             active = scraper.select_active(overview.shipments)
@@ -352,10 +390,24 @@ class Paketbote:
         DHL knows more about a DHL parcel than Amazon's tracker does, and
         asking them costs no Amazon request at all.
         """
-        if not shipment.tracking_code or not self._dhl.available:
+        if not shipment.tracking_code:
+            LOGGER.debug("%s has no tracking number yet", shipment.shipment_id)
+            return
+        if not self._dhl.available:
+            LOGGER.debug("No DHL key configured; not asking for %s", shipment.shipment_id)
             return
         if not dhl_carrier.handles(shipment.carrier):
+            LOGGER.debug("%s is carried by %r, not DHL", shipment.shipment_id, shipment.carrier)
             return
+
+        due = self._config.dhl_poll_minutes
+        if shipment.carrier_checked_at is not None:
+            waited = (datetime.now() - shipment.carrier_checked_at).total_seconds() / 60
+            if waited < due:
+                LOGGER.debug("Asked DHL about %s %.0f min ago; waiting for %d",
+                             shipment.shipment_id, waited, due)
+                return
+        shipment.carrier_checked_at = datetime.now()
 
         update = None
         for postcode in self._postcode_candidates(shipment):

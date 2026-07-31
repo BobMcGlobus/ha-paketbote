@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.11.1
+
+- **Frisch aufgegebene Bestellungen landeten im Archiv.** Eine Sendung, die in
+  *einem* Abruf nicht auf der Bestellliste stand, galt sofort als zugestellt —
+  eine neue Bestellung erscheint dort aber verzögert, und eine Seite, die nicht
+  fertig rendert, sieht genauso aus. Jetzt muss sie dreimal in Folge fehlen,
+  und eine Liste, die unvollständig gelesen wurde, entfernt gar nichts
+- **Ein leeres Passwortfeld löschte den gespeicherten Schlüssel.** Das
+  Einstellungsformular schickt alle Felder mit; einmal Speichern hat damit den
+  DHL-Schlüssel aus den Add-on-Optionen überschrieben. Leer heißt jetzt
+  „unverändert", und gespeicherte Schlüssel werden nicht mehr an den Browser
+  zurückgegeben
+- **Einstellungen wirkten erst nach einem Neustart**, entgegen der Ansage. Der
+  Scheduler liest die Konfiguration jetzt bei jedem Zyklus neu und baut die
+  DHL-Anbindung um, wenn sich der Schlüssel ändert
+- Zusteller und Abrufrhythmus sind in den Einstellungen getrennt benannt, neu
+  ist **Frühestens erneut fragen** je Zusteller (Standard 30 min) — das schont
+  das DHL-Tageslimit
+- Wird ein Zusteller nicht gefragt, steht der Grund im Log
+
 ## 0.11.0
 
 - **Alle Einstellungen in der Oberfläche**, gruppiert unter *Mehr*. Die

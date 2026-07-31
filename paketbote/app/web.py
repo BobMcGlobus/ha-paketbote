@@ -160,8 +160,17 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
     @app.get("/api/settings")
     def read_settings():
         current = Config.load()
-        values = {f["key"]: getattr(current, f["key"], None) for f in settings_module.schema()}
+        values = {}
+        secrets = {}
+        for spec in settings_module.schema():
+            value = getattr(current, spec["key"], None)
+            if spec["kind"] == "password":
+                # Never hand a stored key back out; an empty box means unchanged.
+                secrets[spec["key"]] = bool(value)
+                value = ""
+            values[spec["key"]] = value
         return jsonify({
+            "secrets": secrets,
             "schema": settings_module.schema(),
             "groups": list(settings_module.GROUPS),
             "values": values,
