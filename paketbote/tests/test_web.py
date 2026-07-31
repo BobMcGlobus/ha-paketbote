@@ -278,14 +278,14 @@ class TestSettings(WebTestCase):
         # not touch the network from a test.
         with patch("app.carriers.scraping.requests.get",
                    return_value=Mock(status_code=200, ok=True)) as get:
-            for carrier in ("dhl", "hermes"):
+            for carrier in ("dhl", "hermes", "dpd"):
                 data = self.client.post(f"/api/test/{carrier}").get_json()
                 self.assertTrue(data["ok"], carrier)
                 self.assertIn("web", data["reason"], carrier)
         self.assertTrue(get.called)
 
     def test_a_carrier_we_cannot_ask_is_a_404(self):
-        response = self.client.post("/api/test/dpd")
+        response = self.client.post("/api/test/gls")
         self.assertEqual(response.status_code, 404)
         self.assertFalse(response.get_json()["ok"])
 

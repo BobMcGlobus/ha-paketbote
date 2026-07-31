@@ -28,7 +28,8 @@ CARRIERS: tuple[CarrierInfo, ...] = (
         "https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode={code}",
         automatic=True,
     ),
-    CarrierInfo("dpd", "DPD", "https://tracking.dpd.de/status/de_DE/parcel/{code}"),
+    CarrierInfo("dpd", "DPD", "https://tracking.dpd.de/status/de_DE/parcel/{code}",
+                automatic=True),
     CarrierInfo(
         "hermes",
         "Hermes",

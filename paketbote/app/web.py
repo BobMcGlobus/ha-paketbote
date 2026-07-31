@@ -168,6 +168,7 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
                     "ups": bool(config.ups_client_id and config.ups_client_secret),
                     "fedex": bool(config.fedex_client_id and config.fedex_client_secret),
                     "hermes": config.web_fallback,
+                    "dpd": config.web_fallback,
                     "llm": bool(config.llm_api_key),
                     "developer_mode": config.developer_mode,
                 },

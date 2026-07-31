@@ -12,9 +12,11 @@ class TestKeyFor(unittest.TestCase):
         self.assertEqual(trackers.key_for("DHL"), "dhl")
         self.assertEqual(trackers.key_for("UPS"), "ups")
         self.assertEqual(trackers.key_for("FedEx"), "fedex")
+        self.assertEqual(trackers.key_for("DPD"), "dpd")
+        self.assertEqual(trackers.key_for("Hermes"), "hermes")
 
     def test_a_carrier_we_cannot_ask_gets_no_module(self):
-        for other in ("DPD", "GLS", "AMZL", "", None):
+        for other in ("GLS", "AMZL", "", None):
             self.assertEqual(trackers.key_for(other), "", other)
 
     def test_no_two_modules_claim_the_same_name(self):
@@ -37,7 +39,7 @@ class TestBuild(unittest.TestCase):
 
     def test_carriers_readable_from_the_web_work_without_credentials(self):
         built = trackers.build(Config())
-        for key in ("dhl", "hermes"):
+        for key in ("dhl", "hermes", "dpd"):
             self.assertTrue(built[key].available, key)
             self.assertEqual(built[key].tier, "web", key)
 
@@ -48,6 +50,7 @@ class TestBuild(unittest.TestCase):
         built = trackers.build(Config(web_fallback=False))
         self.assertFalse(built["dhl"].available)
         self.assertFalse(built["hermes"].available)
+        self.assertFalse(built["dpd"].available)
 
     def test_credentials_reach_the_trackers(self):
         config = Config(dhl_api_key="k", ups_client_id="i", ups_client_secret="s",
@@ -73,6 +76,8 @@ class TestPollMinutes(unittest.TestCase):
         self.assertEqual(trackers.poll_minutes(config, "ups"), 45)
         self.assertEqual(trackers.poll_minutes(config, "fedex"), 60)
         self.assertEqual(trackers.poll_minutes(config, "hermes"), 90)
+        # A carrier with no interval of its own borrows the DHL setting.
+        self.assertEqual(trackers.poll_minutes(Config(dhl_poll_minutes=25), "dpd"), 30)
 
 
 class TestRegistryAgrees(unittest.TestCase):

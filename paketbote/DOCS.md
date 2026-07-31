@@ -204,15 +204,21 @@ eigene Webseite anfragt. Kein Schlüssel, keine Anmeldung.
 | Zusteller | Ohne Schlüssel | Anmerkung |
 |---|---|---|
 | **DHL** | ✅ `dhl.de` | Stufe als Position (`fortschritt`), also sprachunabhängig |
+| **DPD** | ✅ `my.dpd.de` | Stufe als Symbolnummer (`status_N.svg`), ebenso sprachunabhängig |
 | **Hermes** | ✅ `api.my-deliveries.de` | Nennt sogar ein Zustellfenster |
-| DPD | ❌ | Datenschutzabfrage mit Captcha davor |
-| GLS | ❌ | Cloudflare-Abfrage |
+| GLS | ❌ | Cloudflare-Abfrage; die offene REST-Schnittstelle verlangt inzwischen eine Registrierung |
 | UPS | ❌ | Blockt automatisierte Zugriffe |
 | FedEx | ❌ | Blockt automatisierte Zugriffe (Akamai) |
 
-Für die vier gesperrten bleibt es beim manuellen Eintragen mit Link. Ein
-Umgehen der Captcha- und Bot-Abfragen ist bewusst nicht eingebaut: es wäre
-gegen die Nutzungsbedingungen und würde bei jeder Änderung erneut brechen.
+Für die drei gesperrten bleibt es beim manuellen Eintragen mit Link. Ein
+Umgehen der Bot-Abfragen ist bewusst nicht eingebaut: es wäre gegen die
+Nutzungsbedingungen und würde bei jeder Änderung erneut brechen.
+
+DPDs Sendungsverfolgung führt über eine Datenschutzseite, die nach der
+Postleitzahl fragt. Für den Grundstatus ist das eine Weiterleitung und keine
+Sperre — die Postleitzahl wird trotzdem mitgeschickt, wenn sie bekannt ist,
+weil sie zur Detailansicht führt. Der Zustellzeitraum wird gelesen, sobald DPD
+ihn auf der Seite nennt.
 
 Ist für DHL ein Schlüssel hinterlegt, hat er Vorrang — er kommt mit
 zugesagten Grenzen und ändert sich nicht ohne Ankündigung. Wird er

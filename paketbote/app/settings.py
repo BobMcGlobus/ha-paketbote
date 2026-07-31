@@ -76,6 +76,7 @@ FIELDS: tuple[Field, ...] = (
     Field("fedex_client_secret", "password", "carriers"),
     Field("fedex_poll_minutes", "int", "carriers", 5, 720, unit="min"),
     Field("hermes_poll_minutes", "int", "carriers", 5, 720, unit="min"),
+    Field("dpd_poll_minutes", "int", "carriers", 5, 720, unit="min"),
     Field("web_fallback", "bool", "carriers"),
 
     Field("llm_provider", "select", "extraction", options=("gemini", "openai", "anthropic")),

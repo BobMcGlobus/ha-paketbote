@@ -16,6 +16,7 @@ import logging
 
 from . import dhl as dhl_module
 from . import dhl_web as dhl_web_module
+from . import dpd as dpd_module
 from . import fedex as fedex_module
 from . import hermes as hermes_module
 from . import ups as ups_module
@@ -27,12 +28,13 @@ LOGGER = logging.getLogger(__name__)
 MODULES = {
     "dhl": dhl_module,
     "hermes": hermes_module,
+    "dpd": dpd_module,
     "ups": ups_module,
     "fedex": fedex_module,
 }
 
 # Carriers we can only read off their website, with no API to prefer.
-WEB_ONLY = ("hermes",)
+WEB_ONLY = ("hermes", "dpd")
 
 
 def build(config, store=None) -> dict:
@@ -52,6 +54,7 @@ def build(config, store=None) -> dict:
             *web(dhl_web_module.DhlWebTracker(store)),
         ]),
         "hermes": Chain("Hermes", web(hermes_module.HermesTracker(store))),
+        "dpd": Chain("DPD", web(dpd_module.DpdTracker(store))),
         "ups": Chain("UPS", [
             ups_module.UpsTracker(config.ups_client_id, config.ups_client_secret, store),
         ]),

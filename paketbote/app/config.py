@@ -56,6 +56,7 @@ class Config:
     fedex_client_secret: str = ""
     fedex_poll_minutes: int = 30
     hermes_poll_minutes: int = 30
+    dpd_poll_minutes: int = 30
     web_fallback: bool = True
     dump_on_start: bool = False
     developer_mode: bool = False

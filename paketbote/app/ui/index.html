@@ -259,6 +259,7 @@ const T = {
       fedex_client_id: "FedEx-API-Key", fedex_client_secret: "FedEx-Secret-Key",
       fedex_poll_minutes: "FedEx: frühestens erneut fragen",
       hermes_poll_minutes: "Hermes: frühestens erneut fragen",
+      dpd_poll_minutes: "DPD: frühestens erneut fragen",
       web_fallback: "Ohne Schlüssel von der Zustellerseite lesen",
       llm_provider: "LLM-Anbieter", llm_model: "LLM-Modell", llm_api_key: "LLM-API-Schlüssel",
       developer_mode: "Entwicklermodus", dump_on_start: "Beim Start ausgeben", log_level: "Protokollstufe",
@@ -324,6 +325,7 @@ const T = {
       fedex_client_id: "FedEx API key", fedex_client_secret: "FedEx secret key",
       fedex_poll_minutes: "FedEx: ask again no sooner than",
       hermes_poll_minutes: "Hermes: ask again no sooner than",
+      dpd_poll_minutes: "DPD: ask again no sooner than",
       web_fallback: "Read from the carrier's own site when no key is set",
       llm_provider: "LLM provider", llm_model: "LLM model", llm_api_key: "LLM API key",
       developer_mode: "Developer mode", dump_on_start: "Dump on start", log_level: "Log level",
@@ -612,7 +614,8 @@ async function loadOptions() {
 }
 
 // The carriers we can ask automatically, and so can offer to test.
-const TESTABLE = [["dhl", "DHL"], ["hermes", "Hermes"], ["ups", "UPS"], ["fedex", "FedEx"]];
+const TESTABLE = [["dhl", "DHL"], ["dpd", "DPD"], ["hermes", "Hermes"],
+                  ["ups", "UPS"], ["fedex", "FedEx"]];
 
 function applyLabels(data) {
   $("hParcels").textContent = L.parcels;

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.17.0
+
+- **DPD wird automatisch abgefragt**, ohne Schlüssel. Die Datenschutzseite vor
+  der Sendungsverfolgung ist eine Weiterleitung, keine Sperre — in 0.16.0 war
+  sie fälschlich als unüberwindbar eingestuft
+- Die Stufe wird aus der Symbolnummer gelesen (`status_N.svg`) und ist damit
+  sprachunabhängig; die Stufendaten dienen als zweites Signal
+- Ein Stufendatum gilt erst ab „Paket in Zustellung" als Zustelldatum —
+  vorher benennt es das Ereignis, nicht die Ankunft
+- Eigenes Intervall und Prüfknopf für DPD
+
 ## 0.16.0
 
 - **DHL funktioniert jetzt ohne Schlüssel.** Der Status kommt von `dhl.de`,
