@@ -42,6 +42,29 @@ configuration:
     name: Read from the carrier's own site
     description: When no API key is configured — or it is refused — the status is
       read from the carrier's public tracking page.
+  imap_host:
+    name: IMAP server
+    description: The mailbox shipping notices arrive in. This covers every shop,
+      not just Amazon. Read only, never modified.
+  imap_port:
+    name: IMAP port
+    description: 993 with SSL, 143 without.
+  imap_user:
+    name: IMAP user
+    description: Usually the full mail address.
+  imap_password:
+    name: IMAP password
+    description: An app password rather than the account password where possible.
+  imap_folder:
+    name: IMAP folder
+    description: INBOX by default. A folder a filter rule feeds with shipping mail
+      only works well.
+  imap_ssl:
+    name: SSL/TLS
+    description: Best left on.
+  imap_poll_minutes:
+    name: Check the mailbox every
+    description: Costs no Amazon request and runs independently of the daily cap.
   poll_idle_minutes:
     name: 'Interval: idle'
     description: Gap while nothing is in transit.

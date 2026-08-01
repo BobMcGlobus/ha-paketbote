@@ -77,6 +77,13 @@ CREATE TABLE IF NOT EXISTS request_budget (
     day      TEXT PRIMARY KEY,
     requests INTEGER NOT NULL DEFAULT 0
 );
+
+-- Small odds and ends that belong to no other table: how far the mailbox has
+-- been read, and which folder that count applies to.
+CREATE TABLE IF NOT EXISTS notes (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
@@ -298,6 +305,28 @@ class Store:
         ]
 
     # -- selector health ---------------------------------------------------
+
+    def note(self, key: str, value: str) -> None:
+        """Remember one small thing between runs."""
+        self._db.execute(
+            "INSERT INTO notes (key, value) VALUES (?,?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, str(value)),
+        )
+        self._db.commit()
+
+    def noted(self, key: str, default: str = "") -> str:
+        row = self._db.execute("SELECT value FROM notes WHERE key = ?", (key,)).fetchone()
+        return row["value"] if row else default
+
+    def shipment_with_code(self, code: str) -> Shipment | None:
+        """Whether this tracking number is already being followed."""
+        if not code:
+            return None
+        row = self._db.execute(
+            "SELECT * FROM shipments WHERE tracking_code = ? LIMIT 1", (code,)
+        ).fetchone()
+        return self._row_to_shipment(row) if row else None
 
     def record_fields(self, fields: dict[str, bool], when: datetime | None = None) -> None:
         """Remember, per field, whether the CSS selectors delivered."""

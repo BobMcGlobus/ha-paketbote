@@ -58,6 +58,13 @@ class Config:
     hermes_poll_minutes: int = 30
     dpd_poll_minutes: int = 30
     web_fallback: bool = True
+    imap_host: str = ""
+    imap_port: int = 993
+    imap_user: str = ""
+    imap_password: str = ""
+    imap_folder: str = "INBOX"
+    imap_ssl: bool = True
+    imap_poll_minutes: int = 15
     dump_on_start: bool = False
     developer_mode: bool = False
     language: str = "auto"

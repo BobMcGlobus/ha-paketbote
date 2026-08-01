@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.18.0
+
+- **Das Postfach ist eine zweite Quelle.** Versandbestätigungen aus beliebigen
+  Shops werden gelesen und als Sendung übernommen — nicht mehr nur Amazon.
+  Zugriff erfolgt ausschließlich lesend
+- **Begriffsbibliothek in sieben Sprachen** plus die Adressbestandteile der
+  Zusteller-Trackinglinks; ein Zusteller-Link allein genügt zur Erkennung
+- **Zusteller wird nicht geraten, sondern erfragt:** die bis zu drei besten
+  Kandidaten werden der Reihe nach angefragt, wer die Nummer nicht kennt fällt
+  raus. Nötig, weil DPD, Hermes und GLS alle vierzehnstellig nummerieren
+- Bestell-, Rechnungs- und Kundennummern werden als Sendungsnummer ausgeschlossen
+- **LLM nur als Notnagel**, und sein Ergebnis wird gegengeprüft: die Nummer muss
+  wörtlich in der Mail stehen, der Zusteller bekannt sein. Anweisungen im
+  Mailtext können damit nichts bewirken
+- Testknopf für das Postfach in den Einstellungen
+
 ## 0.17.0
 
 - **DPD wird automatisch abgefragt**, ohne Schlüssel. Die Datenschutzseite vor

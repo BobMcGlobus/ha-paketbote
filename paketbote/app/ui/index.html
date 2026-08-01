@@ -242,7 +242,7 @@ const T = {
     resetConfirm: "Alle Einstellungen auf Standard zurücksetzen? Schlüssel und Filter bleiben.",
     inEffect: "Beim Abruf wirksam",
     needsRestart: "wirkt nach Neustart",
-    groups: { amazon: "Amazon-Quelle", polling: "Amazon: Abrufrhythmus", carriers: "Zusteller",
+    groups: { amazon: "Amazon-Quelle", polling: "Amazon: Abrufrhythmus", carriers: "Zusteller", mail: "Postfach",
               extraction: "Auslesen", interface: "Darstellung", advanced: "Erweitert" },
     labels: {
       amazon_domain: "Amazon-Domain", language: "Sprache",
@@ -261,6 +261,9 @@ const T = {
       hermes_poll_minutes: "Hermes: frühestens erneut fragen",
       dpd_poll_minutes: "DPD: frühestens erneut fragen",
       web_fallback: "Ohne Schlüssel von der Zustellerseite lesen",
+      imap_host: "IMAP-Server", imap_port: "Port", imap_user: "Benutzer",
+      imap_password: "Passwort", imap_folder: "Ordner", imap_ssl: "SSL/TLS",
+      imap_poll_minutes: "Postfach prüfen alle",
       llm_provider: "LLM-Anbieter", llm_model: "LLM-Modell", llm_api_key: "LLM-API-Schlüssel",
       developer_mode: "Entwicklermodus", dump_on_start: "Beim Start ausgeben", log_level: "Protokollstufe",
     },
@@ -268,7 +271,7 @@ const T = {
     settingsHint: "Die Add-on-Optionen setzen nur die Startwerte. Was hier steht, gilt.",
     poll: "Jetzt abrufen", polling: "Angefragt…", browser: "Browser öffnen",
     version: "Version", amazonCalls: "Amazon-Abrufe heute", dhlCalls: "DHL-Abrufe heute",
-    viaApi: "API", viaWeb: "Zustellerseite",
+    viaApi: "API", viaWeb: "Zustellerseite", mailbox: "Postfach",
     llm: "LLM-Fallback", dhl: "DHL-Abfrage", on: "aktiv", off: "aus",
     loginTitle: "Amazon verlangt eine Anmeldung.", loginBody: "Im Browser erledigen, danach läuft es weiter.",
     throttledTitle: "Tageslimit erreicht.", throttledBody: "Bis Mitternacht wird nicht mehr abgerufen.",
@@ -308,7 +311,7 @@ const T = {
     resetConfirm: "Reset all settings to their defaults? Keys and filters are kept.",
     inEffect: "In effect at the last poll",
     needsRestart: "takes effect after a restart",
-    groups: { amazon: "Amazon source", polling: "Amazon: polling", carriers: "Carriers",
+    groups: { amazon: "Amazon source", polling: "Amazon: polling", carriers: "Carriers", mail: "Mailbox",
               extraction: "Extraction", interface: "Appearance", advanced: "Advanced" },
     labels: {
       amazon_domain: "Amazon domain", language: "Language",
@@ -327,6 +330,9 @@ const T = {
       hermes_poll_minutes: "Hermes: ask again no sooner than",
       dpd_poll_minutes: "DPD: ask again no sooner than",
       web_fallback: "Read from the carrier's own site when no key is set",
+      imap_host: "IMAP server", imap_port: "Port", imap_user: "User",
+      imap_password: "Password", imap_folder: "Folder", imap_ssl: "SSL/TLS",
+      imap_poll_minutes: "Check the mailbox every",
       llm_provider: "LLM provider", llm_model: "LLM model", llm_api_key: "LLM API key",
       developer_mode: "Developer mode", dump_on_start: "Dump on start", log_level: "Log level",
     },
@@ -334,7 +340,7 @@ const T = {
     settingsHint: "The add-on options only seed the first run. What is set here wins.",
     poll: "Refresh now", polling: "Requested…", browser: "Open browser",
     version: "Version", amazonCalls: "Amazon calls today", dhlCalls: "DHL calls today",
-    viaApi: "API", viaWeb: "carrier site",
+    viaApi: "API", viaWeb: "carrier site", mailbox: "Mailbox",
     llm: "LLM fallback", dhl: "DHL lookups", on: "on", off: "off",
     loginTitle: "Amazon wants you to sign in.", loginBody: "Do it in the browser; it continues afterwards.",
     throttledTitle: "Daily limit reached.", throttledBody: "No further polling until midnight.",
@@ -548,10 +554,12 @@ function renderSettings(data) {
     [L.version, data.version],
     [L.lastPoll, fmtAgo(data.status?.letzter_abruf)],
     [L.amazonCalls, `${b.amazon_used} / ${b.amazon_cap}`],
+    [L.mailbox, f.mail ? L.on : L.off],
     [L.llm, f.llm ? L.on : L.off],
   ];
   const tiers = data.carrier_tier || {};
   for (const [key, name] of TESTABLE) {
+    if (key === "mail") continue;
     const used = b.carrier_used?.[key] ?? 0;
     const tier = tiers[key];
     rows.splice(rows.length - 1, 0,
@@ -615,7 +623,7 @@ async function loadOptions() {
 
 // The carriers we can ask automatically, and so can offer to test.
 const TESTABLE = [["dhl", "DHL"], ["dpd", "DPD"], ["hermes", "Hermes"],
-                  ["ups", "UPS"], ["fedex", "FedEx"]];
+                  ["ups", "UPS"], ["fedex", "FedEx"], ["mail", "Postfach"]];
 
 function applyLabels(data) {
   $("hParcels").textContent = L.parcels;

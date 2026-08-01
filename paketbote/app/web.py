@@ -17,8 +17,8 @@ from flask import Flask, jsonify, request, send_from_directory
 from . import __version__
 from . import settings as settings_module
 from .carriers import registry
-from .carriers.base import CarrierError, NotFound
 from .carriers import trackers as carrier_trackers
+from .mail import MailSource
 from .config import Config
 from .people import normalise_name
 from .models import (
@@ -169,6 +169,7 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
                     "fedex": bool(config.fedex_client_id and config.fedex_client_secret),
                     "hermes": config.web_fallback,
                     "dpd": config.web_fallback,
+                    "mail": bool(config.imap_host and config.imap_user),
                     "llm": bool(config.llm_api_key),
                     "developer_mode": config.developer_mode,
                 },
@@ -215,6 +216,21 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
             store.close()
         LOGGER.info("%s credential test: %s (%s)", tracker.name,
                     "ok" if ok else "failed", detail)
+        return jsonify({"ok": ok, "reason": detail})
+
+    @app.post("/api/test/mail")
+    def test_mail():
+        """Say plainly whether the mailbox can be opened."""
+        config = Config.load()
+        store = Store(db_path)
+        try:
+            source = MailSource(config, store)
+            if not source.available:
+                return jsonify({"ok": False, "reason": "no_key"})
+            ok, detail = source.probe()
+        finally:
+            store.close()
+        LOGGER.info("Mailbox test: %s (%s)", "ok" if ok else "failed", detail)
         return jsonify({"ok": ok, "reason": detail})
 
     @app.post("/api/settings/reset")

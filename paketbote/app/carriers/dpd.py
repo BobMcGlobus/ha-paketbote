@@ -16,7 +16,7 @@ from __future__ import annotations
 import html
 import logging
 import re
-from datetime import date, datetime
+from datetime import date
 
 from ..models import (
     STATUS_DELIVERED,

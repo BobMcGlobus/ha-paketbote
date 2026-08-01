@@ -12,7 +12,7 @@ Amazon's milestones reliable.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, time
+from datetime import date, datetime
 
 from ..models import (
     STATUS_DELIVERED,

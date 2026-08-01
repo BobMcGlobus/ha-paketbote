@@ -20,6 +20,7 @@ from . import __version__
 from .browser import AttachedBrowser, BrowserUnavailable, LoginRequired
 from .carriers import CarrierError, NotFound, RateLimited
 from .carriers import trackers as carrier_trackers
+from .mail import MailSource
 from .config import Config
 from .extractor import SOURCE_CSS, SOURCE_LLM, extract
 from .models import (
@@ -30,7 +31,6 @@ from .models import (
     ShipmentFacts,
 )
 from .mqtt import Publisher
-from .people import normalise_name
 from .scheduler import affordable_interval, next_interval_minutes, state_for, summarise
 from .scraper import Scraper
 from .state import Store
@@ -83,6 +83,7 @@ class Paketbote:
         self._carrier_credentials = carrier_trackers.credentials(config)
         self._trackers = carrier_trackers.build(config, store)
         self._css_failures = 0
+        self._last_mail_poll: datetime | None = None
 
     def stop(self, *_args: object) -> None:
         LOGGER.info("Shutting down")
@@ -128,6 +129,8 @@ class Paketbote:
                     tracker.name,
                     "enabled" if tracker.available else "disabled",
                 )
+
+        self._poll_mail(now)
 
         used = self._store.requests_today()
         if used >= config.daily_request_cap:
@@ -266,7 +269,7 @@ class Paketbote:
                     LOGGER.info("%s is reported delivered", stored.shipment_id)
                 self._mark_delivered(stored, now)
 
-            self._refresh_manual(now)
+            self._refresh_tracked(now)
             self._last_sources = sources
 
             # One page that did not finish rendering is not a markup change.
@@ -278,8 +281,12 @@ class Paketbote:
                 else:
                     self._css_failures = 0
 
-    def _refresh_manual(self, now: datetime) -> None:
-        """Parcels added by hand have no source page — only a carrier."""
+    def _refresh_tracked(self, now: datetime) -> None:
+        """Parcels with no source page of their own — only a carrier.
+
+        Everything added by hand or found in a mail: Amazon knows nothing
+        about them, so the carrier is the only thing to ask.
+        """
         for shipment in self._store.all_shipments():
             if shipment.source == SOURCE_AMAZON or not shipment.tracking_code:
                 continue
@@ -398,6 +405,29 @@ class Paketbote:
         shipment.window_end = facts.window_end
         shipment.expected_date = facts.expected_date
         shipment.carrier = facts.carrier or (previous.carrier if previous else None)
+
+    def _poll_mail(self, now: datetime) -> None:
+        """Read the mailbox on its own rhythm, independent of Amazon.
+
+        Deliberately outside the Amazon request cap: a mail costs nothing on
+        amazon.de, and stopping mail because Amazon is throttled would hide
+        parcels from every other shop.
+        """
+        source = MailSource(self._config, self._store, self._trackers)
+        if not source.available:
+            return
+
+        due = max(1, self._config.imap_poll_minutes)
+        if self._last_mail_poll is not None:
+            waited = (now - self._last_mail_poll).total_seconds() / 60
+            if waited < due:
+                return
+        self._last_mail_poll = now
+
+        try:
+            source.poll()
+        except Exception:  # noqa: BLE001 - the mailbox must not stop the loop
+            LOGGER.exception("Reading the mailbox failed")
 
     def _ask_carrier(self, shipment: Shipment) -> None:
         """Let the carrier answer where the parcel is, when it can.

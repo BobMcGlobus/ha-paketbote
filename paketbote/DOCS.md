@@ -126,6 +126,9 @@ Neustart des Add-ons, alles Übrige ab dem nächsten Abruf.
 | `amazon_domain` | `amazon.de` | Bestimmt Übersicht und Tracker-URLs |
 | `llm_provider` / `llm_model` | `gemini` / `gemini-2.5-flash` | Nur für den Fallback |
 | `llm_api_key` | leer | **Optional.** Ohne Key läuft alles weiter, nur ohne Fallback |
+| `imap_host` / `imap_user` / `imap_password` | leer | **Optional.** Schaltet das Postfach als Quelle frei |
+| `imap_port` / `imap_folder` / `imap_ssl` | 993 / INBOX / an | |
+| `imap_poll_minutes` | 15 | Unabhängig vom Amazon-Tageslimit |
 | `dhl_api_key` | leer | **Optional.** Schaltet die DHL-Abfrage frei |
 | `ups_client_id` / `ups_client_secret` | leer | **Optional.** Schaltet die UPS-Abfrage frei |
 | `fedex_client_id` / `fedex_client_secret` | leer | **Optional.** Schaltet die FedEx-Abfrage frei |
@@ -146,6 +149,48 @@ Neustart des Add-ons, alles Übrige ab dem nächsten Abruf.
 
 MQTT-Zugangsdaten kommen über die Supervisor-Services-API und stehen bewusst
 **nicht** in den Optionen.
+
+## Das Postfach als zweite Quelle
+
+Amazon ist nur ein Shop. Jeder andere schickt eine Versandbestätigung per Mail,
+und darin stehen dieselben zwei Dinge, die auch eine Trackingseite hergibt: eine
+Sendungsnummer und ein Zusteller. Ist ein Postfach hinterlegt, wird es
+regelmäßig gelesen und alles Gefundene wandert in dieselbe Liste.
+
+Das Postfach wird **nur gelesen** — mit `readonly`, ohne etwas als gelesen zu
+markieren, zu verschieben oder zu löschen. Wie weit gelesen wurde, merkt sich
+das Add-on selbst über die UID.
+
+**Empfehlung:** eine Filterregel im Hauptpostfach, die Versandmails in einen
+eigenen Ordner legt, und diesen Ordner eintragen. Dann sieht das Add-on nichts
+außer Paketmails.
+
+### Wie eine Mail zur Sendung wird
+
+1. **Erkennen.** Eine Bibliothek von Begriffen in sieben Sprachen — deutsch,
+   englisch, französisch, niederländisch, italienisch, spanisch, polnisch —
+   plus die Adressbestandteile der Zusteller-Trackinglinks. Ein Link auf
+   `my.dpd.de` genügt allein, auch ohne jedes Stichwort.
+2. **Nummer finden.** Zuerst aus dem Link selbst, dann aus dem Text anhand
+   bekannter Nummernformate. Bestell-, Rechnungs- und Kundennummern werden
+   dabei ausgeschlossen — sie sehen Sendungsnummern zum Verwechseln ähnlich.
+3. **Zusteller raten.** Der Host im Trackinglink ist der stärkste Hinweis, dann
+   der im Text genannte Name, zuletzt die Form der Nummer. Letztere entscheidet
+   selten: DPD, Hermes und GLS nummerieren alle vierzehnstellig.
+4. **Nachfragen statt raten.** Die bis zu drei besten Kandidaten werden der
+   Reihe nach beim jeweiligen Zusteller angefragt. Wer die Nummer nicht kennt,
+   fällt raus. Eine Störung beim Zusteller gilt nicht als Absage.
+5. **LLM als Notnagel.** Liest sich eine Mail wie eine Versandbestätigung,
+   enthält aber keine erkennbare Nummer, wird — sofern ein Schlüssel hinterlegt
+   ist — ein Modell gefragt.
+
+### Warum dem Modell nicht geglaubt wird
+
+Der Inhalt einer Mail stammt von einem Fremden, also auch alles, was ein Modell
+daraus vorliest. Zwei Regeln machen das unschädlich: die Nummer muss **wörtlich
+in der Mail stehen**, und der Zusteller muss einer sein, den wir kennen. Damit
+kann eine Mail voller Anweisungen höchstens erreichen, was ohnehin gefunden
+worden wäre — oder gar nichts.
 
 ## Wie gelesen wird
 

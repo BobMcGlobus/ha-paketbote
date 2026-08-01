@@ -18,6 +18,7 @@ STATE_DELIVERED = "DELIVERED"
 
 SOURCE_AMAZON = "amazon"
 SOURCE_MANUAL = "manual"
+SOURCE_MAIL = "mail"
 
 STATUS_UNKNOWN = "unknown"
 STATUS_ORDERED = "ordered"

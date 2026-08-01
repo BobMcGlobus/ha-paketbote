@@ -79,6 +79,14 @@ FIELDS: tuple[Field, ...] = (
     Field("dpd_poll_minutes", "int", "carriers", 5, 720, unit="min"),
     Field("web_fallback", "bool", "carriers"),
 
+    Field("imap_host", "text", "mail"),
+    Field("imap_port", "int", "mail", 1, 65535),
+    Field("imap_user", "text", "mail"),
+    Field("imap_password", "password", "mail"),
+    Field("imap_folder", "text", "mail"),
+    Field("imap_ssl", "bool", "mail"),
+    Field("imap_poll_minutes", "int", "mail", 1, 720, unit="min"),
+
     Field("llm_provider", "select", "extraction", options=("gemini", "openai", "anthropic")),
     Field("llm_model", "text", "extraction"),
     Field("llm_api_key", "password", "extraction"),
@@ -90,7 +98,7 @@ FIELDS: tuple[Field, ...] = (
 )
 
 BY_KEY = {f.key: f for f in FIELDS}
-GROUPS = ("amazon", "polling", "carriers", "extraction", "interface", "advanced")
+GROUPS = ("amazon", "polling", "carriers", "mail", "extraction", "interface", "advanced")
 
 # Not a Field: it is a list, edited by tapping a recipient rather than typing.
 HIDDEN_RECIPIENTS = "hidden_recipients"

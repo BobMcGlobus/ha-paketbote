@@ -41,6 +41,29 @@ configuration:
     name: Von der Zustellerseite lesen
     description: Wenn kein API-Schlüssel hinterlegt ist — oder er abgelehnt wird —
       wird der Status von der öffentlichen Sendungsverfolgung des Zustellers geholt.
+  imap_host:
+    name: IMAP-Server
+    description: Postfach, in das die Versandbestätigungen laufen. Damit werden alle
+      Shops erfasst, nicht nur Amazon. Wird nur gelesen, nie verändert.
+  imap_port:
+    name: IMAP-Port
+    description: 993 mit SSL, 143 ohne.
+  imap_user:
+    name: IMAP-Benutzer
+    description: Meist die vollständige Mailadresse.
+  imap_password:
+    name: IMAP-Passwort
+    description: Wenn möglich ein App-Passwort statt des Kontopassworts.
+  imap_folder:
+    name: IMAP-Ordner
+    description: Standard INBOX. Praktisch ist ein eigener Ordner, in den eine
+      Filterregel nur Versandmails einsortiert.
+  imap_ssl:
+    name: SSL/TLS
+    description: Sollte an bleiben.
+  imap_poll_minutes:
+    name: Postfach prüfen alle
+    description: Kostet keinen Amazon-Abruf und läuft unabhängig vom Tageslimit.
   poll_idle_minutes:
     name: 'Intervall: untätig'
     description: Abstand, wenn keine Sendung aktiv ist.
