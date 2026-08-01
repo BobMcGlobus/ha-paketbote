@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.18.1
+
+- **Amazon-Sendungen wurden doppelt geführt.** Amazon hängt erst beim Versand
+  eine `shipmentId` an den Trackinglink; bis dahin identifizierte der
+  Paketindex dieselbe Sendung. Da die ID Vorrang hatte, wechselte ein Paket
+  mitten im Lauf die Identität und erschien zweimal. Jetzt entscheidet der
+  Paketindex, den es von Anfang an gibt — bereits entstandene Doppler werden
+  beim nächsten Abruf entfernt
+- **Zugestellte Sendungen zeigen die Uhrzeit**, nicht nur „zugestellt heute";
+  „gestern" wird als solches benannt
+- **Einstellbar, wie lange Zugestelltes sichtbar bleibt** (Standard 72 Stunden),
+  bisher fest verdrahtet
+
 ## 0.18.0
 
 - **Das Postfach ist eine zweite Quelle.** Versandbestätigungen aus beliebigen

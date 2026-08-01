@@ -58,6 +58,8 @@ class Config:
     hermes_poll_minutes: int = 30
     dpd_poll_minutes: int = 30
     web_fallback: bool = True
+    # How long a delivered parcel stays on the main page before it is archived.
+    keep_delivered_hours: int = 72
     imap_host: str = ""
     imap_port: int = 993
     imap_user: str = ""

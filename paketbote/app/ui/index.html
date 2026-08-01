@@ -261,6 +261,7 @@ const T = {
       hermes_poll_minutes: "Hermes: frühestens erneut fragen",
       dpd_poll_minutes: "DPD: frühestens erneut fragen",
       web_fallback: "Ohne Schlüssel von der Zustellerseite lesen",
+      keep_delivered_hours: "Zugestellte bleiben sichtbar",
       imap_host: "IMAP-Server", imap_port: "Port", imap_user: "Benutzer",
       imap_password: "Passwort", imap_folder: "Ordner", imap_ssl: "SSL/TLS",
       imap_poll_minutes: "Postfach prüfen alle",
@@ -283,6 +284,7 @@ const T = {
     statuses: { ordered: "Bestellt", shipped: "Versandt", out_for_delivery: "In Zustellung",
                 delivered: "Zugestellt", exception: "Problem", unknown: "Unbekannt" },
     stopsLeft: (n) => `noch ${n} Stopps`, deliveredOn: (d) => `zugestellt ${d}`,
+    yesterday: "gestern",
   },
   en: {
     nav: { parcels: "Parcels", archive: "Archive", add: "Add", settings: "More" },
@@ -330,6 +332,7 @@ const T = {
       hermes_poll_minutes: "Hermes: ask again no sooner than",
       dpd_poll_minutes: "DPD: ask again no sooner than",
       web_fallback: "Read from the carrier's own site when no key is set",
+      keep_delivered_hours: "Delivered parcels stay visible for",
       imap_host: "IMAP server", imap_port: "Port", imap_user: "User",
       imap_password: "Password", imap_folder: "Folder", imap_ssl: "SSL/TLS",
       imap_poll_minutes: "Check the mailbox every",
@@ -352,6 +355,7 @@ const T = {
     statuses: { ordered: "Ordered", shipped: "Shipped", out_for_delivery: "Out for delivery",
                 delivered: "Delivered", exception: "Problem", unknown: "Unknown" },
     stopsLeft: (n) => `${n} stops away`, deliveredOn: (d) => `delivered ${d}`,
+    yesterday: "yesterday",
   },
 };
 
@@ -409,7 +413,17 @@ const fmtDate = (iso) => {
   const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - today) / 86400000);
   if (days === 0) return L.today0;
   if (days === 1) return L.tomorrow;
+  if (days === -1) return L.yesterday;
   return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+};
+// "heute, 14:32" — the day on its own is not much use once it has arrived.
+const fmtWhen = (iso) => {
+  if (!iso) return null;
+  const day = fmtDate(iso);
+  const d = new Date(iso.length > 10 ? iso : iso + "T00:00:00");
+  if (Number.isNaN(d.getTime()) || iso.length <= 10) return day;
+  const clock = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return `${day}, ${clock}`;
 };
 const fmtAgo = (iso) => {
   if (!iso) return L.never;
@@ -479,7 +493,7 @@ function shipCard(s, { editable = false, delivered = false } = {}) {
 }
 
 function headline(s, delivered) {
-  if (delivered) return esc(L.deliveredOn(fmtDate(s.delivered_at)));
+  if (delivered) return esc(L.deliveredOn(fmtWhen(s.delivered_at)));
   const day = fmtDate(s.expected_date);
   const window = s.window_start
     ? `<span class="clock">${esc(s.window_start.slice(0, 5))}–${esc((s.window_end || "").slice(0, 5))}</span>` : "";

@@ -219,11 +219,15 @@ def identify(url: str) -> tuple[str, str] | None:
     if not order_id:
         return None
 
-    shipment_key = params.get("shipmentid")
-    if not shipment_key:
-        # One order can ship as several packages; packageIndex is what keeps
-        # them apart when Amazon hands out no shipment id.
-        shipment_key = f"{order_id}-{params.get('packageindex', '0')}"
+    # packageIndex is what keeps the packages of one order apart, and — unlike
+    # shipmentId — Amazon puts it on the link from the moment the order exists.
+    # A shipmentId only appears once the parcel is dispatched, so keying on it
+    # made the same parcel change identity mid-life and appear twice.
+    package_index = params.get("packageindex")
+    if package_index is not None:
+        shipment_key = f"{order_id}-{package_index}"
+    else:
+        shipment_key = params.get("shipmentid") or f"{order_id}-0"
 
     return sanitise_id(order_id), sanitise_id(shipment_key)
 

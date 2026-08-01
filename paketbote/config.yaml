@@ -1,6 +1,6 @@
 ---
 name: Paketbote
-version: "0.18.0"
+version: "0.18.1"
 slug: paketbote
 description: Amazon-Lieferverfolgung via persistentem Browser
 url: https://github.com/BobMcGlobus/ha-paketbote
@@ -71,6 +71,7 @@ schema:
   hermes_poll_minutes: int(5,720)?
   dpd_poll_minutes: int(5,720)?
   web_fallback: bool?
+  keep_delivered_hours: int(1,2160)?
   imap_host: str?
   imap_port: int(1,65535)?
   imap_user: str?

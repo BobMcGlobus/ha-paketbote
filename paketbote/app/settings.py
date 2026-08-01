@@ -79,6 +79,8 @@ FIELDS: tuple[Field, ...] = (
     Field("dpd_poll_minutes", "int", "carriers", 5, 720, unit="min"),
     Field("web_fallback", "bool", "carriers"),
 
+    Field("keep_delivered_hours", "int", "interface", 1, 2160, unit="h"),
+
     Field("imap_host", "text", "mail"),
     Field("imap_port", "int", "mail", 1, 65535),
     Field("imap_user", "text", "mail"),

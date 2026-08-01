@@ -65,6 +65,10 @@ configuration:
   imap_poll_minutes:
     name: Check the mailbox every
     description: Costs no Amazon request and runs independently of the daily cap.
+  keep_delivered_hours:
+    name: Delivered parcels stay visible
+    description: How long a delivered parcel stays on the main page before moving to
+      the archive. It leaves Home Assistant at the same moment.
   poll_idle_minutes:
     name: 'Interval: idle'
     description: Gap while nothing is in transit.

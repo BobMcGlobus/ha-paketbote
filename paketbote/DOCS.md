@@ -52,9 +52,12 @@ Manuell angelegte Sendungen lassen sich in der Liste **bearbeiten**
 (Bezeichnung und Empfänger) und entfernen. Alles Übrige kommt vom Zusteller
 und wird deshalb nicht von Hand überschrieben.
 
-**Zugestellte Sendungen** bleiben drei Tage sichtbar und wandern dann ins
-Archiv; aus Home Assistant verschwinden sie zum selben Zeitpunkt. Nach 90
-Tagen werden sie endgültig verworfen.
+**Zugestellte Sendungen** bleiben standardmäßig 72 Stunden sichtbar und wandern
+dann ins Archiv; aus Home Assistant verschwinden sie zum selben Zeitpunkt. Die
+Dauer ist unter *Darstellung → Zugestellte bleiben sichtbar* einstellbar. Nach
+90 Tagen werden sie endgültig verworfen.
+
+Bei einer zugestellten Sendung steht neben dem Tag auch die Uhrzeit.
 
 Die Oberfläche läuft als eigener Prozess und liest nur mit. Ein Fehler dort
 kann die Abrufschleife nicht anhalten.
@@ -144,6 +147,7 @@ Neustart des Add-ons, alles Übrige ab dem nächsten Abruf.
 | `jitter_percent` | 20 | Zufallsstreuung auf jedes Intervall |
 | `dump_on_start` | `false` | Beim Start alle Seiten nach `/config/dumps/` schreiben |
 | `developer_mode` | `false` | Siehe unten |
+| `keep_delivered_hours` | 72 | Wie lange Zugestelltes sichtbar bleibt |
 | `language` | `auto` | Sprache der Oberfläche: `auto`, `de`, `en` |
 | `log_level` | `info` | `trace` zeigt jeden Schritt |
 

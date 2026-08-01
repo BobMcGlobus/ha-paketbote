@@ -13,11 +13,23 @@ ORDER = "028-1234567-1234567"
 
 
 class TestIdentify(unittest.TestCase):
-    def test_shipment_id_wins_when_present(self):
+    def test_the_package_index_decides_even_when_a_shipment_id_is_offered(self):
+        # Amazon only adds shipmentId once the parcel is dispatched. Keying on
+        # it made a parcel change identity mid-life and be filed twice.
         url = (
             f"https://www.amazon.de/progress-tracker/package/ref=ppx_yo_dt_b_track"
             f"?_encoding=UTF8&orderId={ORDER}&packageIndex=0&shipmentId=DhX7Kq2"
         )
+        self.assertEqual(identify(url), (ORDER, f"{ORDER}-0"))
+
+    def test_the_identity_survives_dispatch(self):
+        base = f"https://www.amazon.de/gp/your-account/ship-track?orderId={ORDER}&packageIndex=1"
+        before = identify(base)
+        after = identify(base + "&shipmentId=DhX7Kq2")
+        self.assertEqual(before, after)
+
+    def test_a_shipment_id_is_used_when_there_is_no_package_index(self):
+        url = f"https://www.amazon.de/progress-tracker/package?orderId={ORDER}&shipmentId=DhX7Kq2"
         self.assertEqual(identify(url), (ORDER, "DhX7Kq2"))
 
     def test_falls_back_to_order_and_package_index(self):

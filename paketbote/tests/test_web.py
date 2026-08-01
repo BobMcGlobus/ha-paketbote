@@ -3,7 +3,7 @@
 import json
 import tempfile
 import unittest
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -108,6 +108,38 @@ class TestStateEndpoint(WebTestCase):
     def test_corrupt_status_file_is_not_an_error(self):
         self._status.write_text("{kaputt")
         self.assertEqual(self.client.get("/api/state").get_json()["status"], {})
+
+
+class TestDeliveredBucket(WebTestCase):
+    """How long a delivered parcel stays out of the archive is a setting."""
+
+    def _shipment(self, hours_ago):
+        return Shipment(
+            shipment_id="X", order_id="1", tracking_url="u", title="Da",
+            state=STATE_DELIVERED,
+            delivered_at=datetime.now() - timedelta(hours=hours_ago),
+        )
+
+    def test_freshly_delivered_is_not_archived(self):
+        self.assertEqual(web.bucket_of(self._shipment(1), 72), "delivered")
+
+    def test_past_the_window_it_moves_to_the_archive(self):
+        self.assertEqual(web.bucket_of(self._shipment(80), 72), "archive")
+
+    def test_a_longer_window_keeps_it_visible(self):
+        self.assertEqual(web.bucket_of(self._shipment(80), 168), "delivered")
+
+    def test_a_shorter_window_archives_it_sooner(self):
+        self.assertEqual(web.bucket_of(self._shipment(5), 2), "archive")
+
+    def test_a_parcel_still_on_its_way_is_current(self):
+        underway = Shipment(shipment_id="Y", order_id="2", tracking_url="u", title="Kommt")
+        self.assertEqual(web.bucket_of(underway, 72), "current")
+
+    def test_every_shipment_is_given_a_bucket(self):
+        data = self.client.get("/api/state").get_json()
+        for shipment in data["shipments"]:
+            self.assertIn(shipment["bucket"], ("current", "delivered", "archive"))
 
 
 class TestPollEndpoint(WebTestCase):

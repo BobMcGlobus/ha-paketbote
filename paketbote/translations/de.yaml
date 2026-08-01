@@ -64,6 +64,10 @@ configuration:
   imap_poll_minutes:
     name: Postfach prüfen alle
     description: Kostet keinen Amazon-Abruf und läuft unabhängig vom Tageslimit.
+  keep_delivered_hours:
+    name: Zugestellte bleiben sichtbar
+    description: Wie lange ein zugestelltes Paket auf der Hauptseite bleibt, bevor
+      es ins Archiv wandert. Zum selben Zeitpunkt verschwindet es aus Home Assistant.
   poll_idle_minutes:
     name: 'Intervall: untätig'
     description: Abstand, wenn keine Sendung aktiv ist.

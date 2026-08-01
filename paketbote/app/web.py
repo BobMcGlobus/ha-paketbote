@@ -42,8 +42,9 @@ UI_DIR = Path(__file__).parent / "ui"
 LISTEN_HOST = "127.0.0.1"
 LISTEN_PORT = 8099
 
-# Mirrors the scheduler: delivered parcels stay in view this long.
-KEEP_DELIVERED_DAYS = 3
+# Fallback only; the setting decides. Kept so bucket_of() works when it is
+# called without a configuration, as the tests do.
+DEFAULT_KEEP_DELIVERED_HOURS = 72
 
 
 def read_status() -> dict:
@@ -54,7 +55,7 @@ def read_status() -> dict:
         return {}
 
 
-def shipment_payload(shipment) -> dict:
+def shipment_payload(shipment, keep_hours: int = DEFAULT_KEEP_DELIVERED_HOURS) -> dict:
     return {
         "shipment_id": shipment.shipment_id,
         "source": shipment.source,
@@ -73,13 +74,13 @@ def shipment_payload(shipment) -> dict:
         "tracking_url": shipment.tracking_url,
         "last_seen": shipment.last_seen.isoformat() if shipment.last_seen else None,
         "delivered_at": shipment.delivered_at.isoformat() if shipment.delivered_at else None,
-        "bucket": bucket_of(shipment),
+        "bucket": bucket_of(shipment, keep_hours),
         "recipient_key": normalise_name(shipment.recipient),
         "items": shipment.items,
     }
 
 
-def bucket_of(shipment) -> str:
+def bucket_of(shipment, keep_hours: int = DEFAULT_KEEP_DELIVERED_HOURS) -> str:
     """Which section of the interface this parcel belongs in."""
     delivered = shipment.state == STATE_DELIVERED or shipment.status == STATUS_DELIVERED
     if not delivered and shipment.delivered_at is None:
@@ -88,7 +89,7 @@ def bucket_of(shipment) -> str:
     # Rows written before delivered_at existed carry no timestamp; fall back to
     # when they were last seen, and archive them if even that is missing.
     stamp = shipment.delivered_at or shipment.last_seen
-    if stamp is None or datetime.now() - stamp > timedelta(days=KEEP_DELIVERED_DAYS):
+    if stamp is None or datetime.now() - stamp > timedelta(hours=max(1, keep_hours)):
         return "archive"
     return "delivered"
 
@@ -140,7 +141,8 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
         shipments.sort(
             key=lambda s: (s.expected_date is None, s.expected_date, s.title.lower())
         )
-        buckets = [bucket_of(s) for s in shipments]
+        keep_hours = config.keep_delivered_hours
+        buckets = [bucket_of(s, keep_hours) for s in shipments]
         active = [s for s, b in zip(shipments, buckets) if b == "current"]
 
         return jsonify(
@@ -148,7 +150,7 @@ def create_app(db_path: Path | str = DEFAULT_DB_PATH) -> Flask:
                 "version": __version__,
                 "now": datetime.now().astimezone().isoformat(),
                 "status": read_status(),
-                "shipments": [shipment_payload(s) for s in shipments],
+                "shipments": [shipment_payload(s, keep_hours) for s in shipments],
                 "counts": {
                     "total": len(shipments),
                     "active": len(active),

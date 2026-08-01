@@ -45,9 +45,6 @@ CHALLENGE_BACKOFF_MINUTES = (5, 15, 60, 240)
 # selector-health sensor reports a problem.
 CSS_FAILURE_THRESHOLD = 2
 
-# How long a delivered parcel stays in view before it is archived.
-KEEP_DELIVERED_DAYS = 3
-
 # When archived parcels are finally dropped.
 ARCHIVE_DAYS = 90
 
@@ -198,6 +195,10 @@ class Paketbote:
             known = {s.shipment_id: s for s in stored}
             seen = {s.shipment_id for s in overview.shipments}
 
+            self._drop_renamed(stored, overview.shipments)
+            stored = self._store.all_shipments()
+            known = {s.shipment_id: s for s in stored}
+
             # Orders drop off the list once they age out of Amazon's window.
             # Manually added parcels were never on it and must survive.
             from_amazon = {s.shipment_id for s in stored if s.source == SOURCE_AMAZON}
@@ -281,6 +282,47 @@ class Paketbote:
                 else:
                     self._css_failures = 0
 
+    def _drop_renamed(self, stored: list[Shipment], seen: list[Shipment]) -> None:
+        """Remove rows left behind when a parcel changed its Amazon identity.
+
+        Amazon adds a shipmentId to the tracking link once a parcel is
+        dispatched, and older versions keyed on it — so the same parcel was
+        filed twice, once before and once after dispatch. The key is now the
+        package index, which is there from the start, and this clears up what
+        the old rule left.
+
+        Only a stored parcel whose order is on the list *and* whose contents
+        match one that is, but under a different id, is dropped. A genuine
+        second package of the same order holds different articles and is on
+        the list in its own right, so it stays.
+        """
+        seen_ids = {s.shipment_id for s in seen}
+        by_order: dict[str, list[Shipment]] = {}
+        for shipment in seen:
+            by_order.setdefault(shipment.order_id, []).append(shipment)
+
+        def contents(shipment: Shipment) -> tuple:
+            if shipment.items:
+                return tuple(sorted(str(i.get("title", "")) for i in shipment.items))
+            return (shipment.title,)
+
+        for old in stored:
+            if old.source != SOURCE_AMAZON or old.shipment_id in seen_ids:
+                continue
+            twin = next(
+                (s for s in by_order.get(old.order_id, []) if contents(s) == contents(old)),
+                None,
+            )
+            if twin is None:
+                continue
+
+            LOGGER.info(
+                "%s is %s under Amazon's older naming; dropping the duplicate",
+                old.shipment_id, twin.shipment_id,
+            )
+            self._store.forget(old.shipment_id)
+            self._publisher.retire_shipment(old.shipment_id)
+
     def _refresh_tracked(self, now: datetime) -> None:
         """Parcels with no source page of their own — only a carrier.
 
@@ -326,7 +368,7 @@ class Paketbote:
                 LOGGER.info("Dropping %s from the archive", shipment.shipment_id)
                 self._publisher.retire_shipment(shipment.shipment_id)
                 self._store.forget(shipment.shipment_id)
-            elif age > timedelta(days=KEEP_DELIVERED_DAYS):
+            elif age > timedelta(hours=max(1, self._config.keep_delivered_hours)):
                 if shipment.shipment_id in self._publisher.announced:
                     LOGGER.info("Archiving %s", shipment.shipment_id)
                     self._publisher.retire_shipment(shipment.shipment_id)
